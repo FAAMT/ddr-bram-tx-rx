@@ -1,0 +1,56 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.1 (lin64) Build 6140274 Wed May 21 22:58:25 MDT 2025
+| Date         : Fri Jul 31 19:18:53 2026
+| Host         : nyu-Alienware-18-Area-51-AA18250 running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_drc -file rfsoc_waveform_tx_rx_bd_wrapper_drc_routed.rpt -pb rfsoc_waveform_tx_rx_bd_wrapper_drc_routed.pb -rpx rfsoc_waveform_tx_rx_bd_wrapper_drc_routed.rpx
+| Design       : rfsoc_waveform_tx_rx_bd_wrapper
+| Device       : xczu48dr-ffvg1517-2-e
+| Speed File   : -2
+| Design State : Fully Routed
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Report DRC
+
+Table of Contents
+-----------------
+1. REPORT SUMMARY
+2. REPORT DETAILS
+
+1. REPORT SUMMARY
+-----------------
+            Netlist: netlist
+          Floorplan: design_1
+      Design limits: <entire design considered>
+           Ruledeck: default
+             Max checks: <unlimited>
+             Checks found: 1
++-----------+----------+-------------------+--------+
+| Rule      | Severity | Description       | Checks |
++-----------+----------+-------------------+--------+
+| RTSTAT-10 | Warning  | No routable loads | 1      |
++-----------+----------+-------------------+--------+
+
+2. REPORT DETAILS
+-----------------
+RTSTAT-10#1 Warning
+No routable loads  
+31 net(s) have no routable loads. The problem bus(es) and/or net(s) are rfsoc_waveform_tx_rx_bd_i/blk_mem_gen_rx/U0/inst_blk_mem_gen/gnbram.gnative_mem_map_bmg.native_mem_map_blk_mem_gen/valid.cstr/ramloop[3].ram.r/ENA_dly_D,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m00_nodes/m00_ar_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m00_nodes/m00_b_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m00_nodes/m00_w_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m02_nodes/m02_ar_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m02_nodes/m02_aw_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m02_nodes/m02_r_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m02_nodes/m02_w_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m03_nodes/m03_ar_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m03_nodes/m03_aw_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/m03_nodes/m03_r_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/s00_nodes/s00_ar_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/s00_nodes/s00_aw_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/s00_nodes/s00_b_node/inst/mi_handler_m_sc_areset_pipe,
+rfsoc_waveform_tx_rx_bd_i/smartconnect_0/inst/s00_nodes/s00_r_node/inst/mi_handler_m_sc_areset_pipe
+ (the first 15 of 31 listed nets/buses).
+Related violations: <none>
+
+
