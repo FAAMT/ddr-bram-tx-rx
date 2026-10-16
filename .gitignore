@@ -1,0 +1,15 @@
+# What the Makefile generates. The README says these are ignored; the source repo had no .gitignore to do it.
+build/
+output/
+dist/
+generated_ip_repo/
+
+# Vivado and Vitis in batch mode, run from the repo root
+.Xil/
+*.jou
+vivado*.log
+vitis*.log
+
+# Claude Code's per-machine permission grants
+.claude/settings.local.json
+.claude/worktrees/

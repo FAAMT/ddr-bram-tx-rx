@@ -1,5 +1,7 @@
 # RFSoC Waveform TX/RX Rebuildable Project
 
+> Original author: Ruibin Chen ([Ruibin2000/DDR_BRAM_tx_rx_v1](https://github.com/Ruibin2000/DDR_BRAM_tx_rx_v1)). This repository is a copy of his design; the untouched import is on the `ruibin-source` branch.
+
 This is a relocatable and version-control-friendly RFSoC4x2 project intended for continued development. Source files and generated artifacts are kept separate; do not commit Vivado or Vitis working directories.
 
 ## Project scope
