@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ddr-bram-tx-rx</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%20width%3D%2732%27%20height%3D%2732%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27nm%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%278%27%20fill%3D%27url%28%23nm%29%27%2F%3E%3Cpath%20d%3D%27M9%2023V9l5%207%204-5%205%2012%27%20fill%3D%27none%27%20stroke%3D%27%23080909%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E">
+<script>
+  // Theme before first paint. A cookie, not localStorage: it ignores the port,
+  // so one choice carries across every page on the tailnet host.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+  })();
+</script>
+<style>
+:root {
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'JetBrains Mono', Consolas, monospace;
+
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12);
+  --header-bg: rgba(8, 9, 9, .55);
+
+  /* The tile identifies the tool and is the register's colour; JS overwrites it from there. */
+  --tile: #ffd23d; --tile-glow: rgba(255, 210, 61, .35);
+
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+    --line: #d5d9d3; --line-2: #b7bdb6;
+    --text: #121412; --dim: #3f4741; --muted: #586259;
+    --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+    --accent-tint: rgba(10, 111, 148, .08);
+    --header-bg: rgba(246, 247, 243, .75);
+    --tile-glow: rgba(122, 96, 0, .18);
+    --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+    --line: #8a8a8a; --line-2: #c0c0c0;
+    --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+    --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+    --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+    --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+  }
+}
+[data-theme="dark"] {
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12); --header-bg: rgba(8, 9, 9, .55);
+  --tile-glow: rgba(255, 210, 61, .35);
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+[data-theme="light"] {
+  --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+  --line: #d5d9d3; --line-2: #b7bdb6;
+  --text: #121412; --dim: #3f4741; --muted: #586259;
+  --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+  --accent-tint: rgba(10, 111, 148, .08); --header-bg: rgba(246, 247, 243, .75);
+  --tile-glow: rgba(122, 96, 0, .18);
+  --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+}
+[data-theme="contrast"] {
+  --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+  --line: #8a8a8a; --line-2: #c0c0c0;
+  --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+  --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+  --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+  --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+}
+::selection { background: var(--accent); color: var(--bg); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: .95em; color: var(--text); background: var(--card-2);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.bar { max-width: 1120px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px;
+         color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
+.brand-mark {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex: none;
+  color: #080909; background: var(--tile); box-shadow: 0 4px 18px var(--tile-glow);
+}
+nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+nav a { white-space: nowrap; color: var(--dim); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+nav a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.themes { display: flex; gap: 4px; }
+.themes button {
+  font-family: var(--mono); font-size: 11px; color: var(--dim); background: var(--card);
+  border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; cursor: pointer;
+}
+.themes button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+
+main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+section { margin-top: 44px; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 18px 0 8px; }
+.label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+.deck { color: var(--dim); margin: 0 0 16px; max-width: 78ch; }
+p { margin: 0 0 10px; }
+.dim { color: var(--dim); }
+.num { font-variant-numeric: tabular-nums; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.grid { display: grid; gap: 12px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.stat .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .v.small { font-size: 15px; }
+.stat .s { color: var(--dim); font-size: 12px; }
+.prov { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+
+/* status: glyph + word, never colour alone */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin: 8px 0 12px; }
+.st { white-space: nowrap; font-weight: 700; }
+.st.idle { color: var(--idle); } .st.working { color: var(--working); }
+.st.done { color: var(--done); } .st.error { color: var(--error); }
+.st .w { color: var(--text); font-weight: 400; margin-left: 4px; }
+
+.rows { display: grid; gap: 8px; }
+.row { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--idle);
+       border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 10px; }
+.row.done { border-left-color: var(--done); } .row.working { border-left-color: var(--working); }
+.row.error { border-left-color: var(--error); }
+.row .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .t { font-weight: 700; }
+.row .d { grid-column: 2 / 4; color: var(--dim); }
+.row .why { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
+.tag { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th { text-align: left; font-weight: 400; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+          color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: 0; }
+
+/* Report excerpts and code keep their columns and pan inside their own box. */
+.pan { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+pre.rpt { margin: 0; padding: 12px 14px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+          color: var(--dim); white-space: pre; width: max-content; min-width: 100%; }
+
+.picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+select, .btn {
+  font-family: var(--mono); font-size: 12.5px; color: var(--text); background: var(--card-2);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 10px;
+}
+select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
+.btn { cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.btn:hover { background: var(--card-3); text-decoration: none; }
+.fmeta { color: var(--dim); font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.code { max-height: 72vh; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.code ol { margin: 0; padding: 10px 0; list-style: none; counter-reset: ln; width: max-content; min-width: 100%; }
+.code li { counter-increment: ln; white-space: pre; font-size: 12px; line-height: 1.55; padding-right: 16px; }
+.code li::before { content: counter(ln); display: inline-block; width: 5ch; margin-right: 14px; padding-right: 8px;
+                   text-align: right; color: var(--muted); border-right: 1px solid var(--line);
+                   font-variant-numeric: tabular-nums; user-select: none; }
+.code li.c { color: var(--muted); }
+.empty { color: var(--dim); }
+
+.md h1, .md h2 { font-size: 15px; margin: 18px 0 6px; }
+.md h1:first-child { margin-top: 0; }
+.md ul { margin: 0 0 10px; padding-left: 20px; }
+.md li { margin-bottom: 4px; color: var(--dim); }
+.md p { color: var(--dim); }
+.md pre { background: var(--card-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* 860px: one breakpoint, appended last */
+@media (max-width: 860px) {
+  body { min-height: 100vh; min-height: 100dvh; }
+  .bar { flex-wrap: wrap; padding: 10px 16px; }
+  main { padding: 20px 16px 64px; }
+  nav { margin-left: 0; order: 3; width: 100%; }
+  .themes { margin-left: auto; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .row { grid-template-columns: 24px 1fr; }
+  .row .st { grid-column: 2; }
+  .row .d, .row .why { grid-column: 2; }
+  /* Tables stack into one card per row. */
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .tbl tr:last-child { border-bottom: 0; }
+  .tbl td { border: 0; padding: 2px 8px; overflow-wrap: anywhere; }
+  .tbl td[data-k]::before { content: attr(data-k); display: block; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tbl td:first-child { font-weight: 700; }
+  .code { max-height: 70vh; }
+}
+@media (pointer: coarse) {
+  nav a, .themes button, select, .btn { min-height: 40px; display: inline-flex; align-items: center; }
+  nav a { padding: 4px 10px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M9 23V9l5 7 4-5 5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span id="name">ddr-bram-tx-rx</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#plan">Plan</a>
+      <a href="#progress">Progress</a>
+      <a href="#source">Source</a>
+      <a href="#results">Results</a>
+    </nav>
+    <div class="themes" role="group" aria-label="Theme">
+      <button data-t="dark">Dark</button><button data-t="light">Light</button><button data-t="contrast">Contrast</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h1 id="title">ddr-bram-tx-rx</h1>
+  <p class="deck" id="desc">Fahad's copy of Ruibin Chen's RFSoC 4x2 waveform TX/RX design, with the PS DDR → TX BRAM
+    extension and, now, a channel emulator. Every figure on this page is read from the repo when the page loads;
+    anything not yet measured says so.</p>
+  <p class="prov" id="loaded">Loading state…</p>
+
+  <!-- 1. Plan -->
+  <section id="plan">
+    <div class="label">Plan</div>
+    <h2>The phased build plan</h2>
+    <p class="deck">Phases 1–3 are the import, as the falcon session ran it. Phases 4–8 are this session's
+      proposal and have not been agreed with Fahad. Statuses with a check come from the repo itself.</p>
+    <div class="legend" aria-label="Status legend">
+      <span class="st done">✓<span class="w">Done</span></span>
+      <span class="st working">▶<span class="w">In Progress</span></span>
+      <span class="st idle">●<span class="w">Not Started</span></span>
+      <span class="st error">✗<span class="w">Blocked</span></span>
+    </div>
+    <div class="rows" id="plan-rows"><p class="empty">Waiting for state.</p></div>
+  </section>
+
+  <!-- 2. Progress -->
+  <section id="progress">
+    <div class="label">Progress</div>
+    <h2>Where it stands, and what is blocked</h2>
+    <div class="stats" id="git-stats"></div>
+    <h3>Blocked</h3>
+    <div class="rows" id="blocked"><p class="empty">Waiting for state.</p></div>
+    <h3>Uncommitted in this checkout</h3>
+    <div id="dirty"><p class="empty">Waiting for state.</p></div>
+  </section>
+
+  <!-- 3. Source -->
+  <section id="source">
+    <div class="label">Source</div>
+    <h2>The source code</h2>
+    <p class="deck">The real files, read from disk on each pick. Only the files listed here are served; the
+      bitstream, the .xsa and the IP zips are not.</p>
+    <div class="picker">
+      <label class="label" for="file" style="margin:0">File</label>
+      <select id="file" aria-label="Source file"></select>
+      <a class="btn" id="raw" href="#" target="_blank" rel="noopener">Open Raw</a>
+    </div>
+    <div class="fmeta" id="fmeta"></div>
+    <div class="code" id="code" tabindex="0" aria-label="File contents"><p class="empty" style="padding:12px 14px;margin:0">No file selected.</p></div>
+  </section>
+
+  <!-- 4. Results -->
+  <section id="results">
+    <div class="label">Results</div>
+    <h2>Current run results</h2>
+    <p class="deck">The most recent implementation is the known-good reference in
+      <code>reference/known_good/reports/</code>, routed on Ruibin's machine. Nothing has been synthesized or
+      implemented since, on any machine this project runs on.</p>
+
+    <h3>Routed Timing</h3>
+    <div class="stats" id="timing-stats"></div>
+    <p class="prov" id="timing-prov"></p>
+    <h3>Per-Clock Slack</h3>
+    <div class="pan"><pre class="rpt" id="intra"></pre></div>
+    <h3>Clocks</h3>
+    <div class="pan"><pre class="rpt" id="clocks"></pre></div>
+
+    <h3>Route Status</h3>
+    <div class="stats" id="route-stats"></div>
+
+    <h3>Routed DRC</h3>
+    <div id="drc"></div>
+
+    <h3>HLS Testbenches</h3>
+    <p class="deck">Each design has a self-checking C testbench under <code>hls/*/tb</code>. "Recorded" is what
+      <code>docs/VALIDATION.md</code> says; "this machine" is a run here.</p>
+    <div class="legend" aria-label="Status legend">
+      <span class="st done">✓<span class="w">Passed</span></span>
+      <span class="st idle">●<span class="w">Not Measured</span></span>
+      <span class="st error">✗<span class="w">Failed</span></span>
+    </div>
+    <div class="card" style="padding:4px 8px"><table class="tbl" id="hls"></table></div>
+
+    <h3>Validation Record</h3>
+    <div class="card md" id="validation"><p class="empty">Waiting for state.</p></div>
+
+    <h3>Raw Reports</h3>
+    <div class="picker">
+      <a class="btn" href="/report/timing_summary_routed.rpt" target="_blank" rel="noopener">timing_summary_routed.rpt</a>
+      <a class="btn" href="/report/drc_routed.rpt" target="_blank" rel="noopener">drc_routed.rpt</a>
+      <a class="btn" href="/report/route_status.rpt" target="_blank" rel="noopener">route_status.rpt</a>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var NM = 'not measured';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  var GLYPH = { done: '✓', working: '▶', idle: '●', error: '✗' };
+  function st(s, word) { return '<span class="st ' + s + '">' + GLYPH[s] + '<span class="w">' + esc(word) + '</span></span>'; }
+  function stat(label, value, sub, small) {
+    var v = value == null || value === '' ? NM : value;
+    return '<div class="stat"><div class="label">' + esc(label) + '</div><div class="v num' +
+      (small || v === NM ? ' small' : '') + '">' + esc(v) + '</div>' + (sub ? '<div class="s">' + esc(sub) + '</div>' : '') + '</div>';
+  }
+  function row(n, s, word, title, detail, why, tag) {
+    return '<div class="row ' + s + '"><span class="n">' + esc(n) + '</span><span class="t">' + esc(title) +
+      (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '</span>' + st(s, word) +
+      '<span class="d">' + detail + '</span>' + (why ? '<span class="why">' + why + '</span>' : '') + '</div>';
+  }
+  function code(s) { return '<code>' + esc(s) + '</code>'; }
+
+  // Phases. `s` is decided from the repo where the repo can say; otherwise it is the plan's own word.
+  function plan(S) {
+    var g = S.git, tools = S.tools, anyTool = tools['vitis-run'] || tools['v++'] || tools.vivado;
+    var P = [
+      ['Import Ruibin\'s repo with a fresh history', g.has_ruibin_source ? 'done' : 'idle',
+        'Ruibin2000/DDR_BRAM_tx_rx_v1 at ' + code('84275a9') + ', byte-identical, kept on branch ' + code('ruibin-source') + '.',
+        g.has_ruibin_source ? 'Checked: branch ' + code('ruibin-source') + ' exists.' : 'Branch ' + code('ruibin-source') + ' not found.', 'falcon'],
+      ['Publish as FAAMT/ddr-bram-tx-rx, public', g.origin_main ? 'done' : 'idle',
+        'Pushed to GitHub, ' + code('main') + ' readable anonymously.',
+        g.origin_main ? 'Checked: ' + code('origin/main') + ' is ' + code(g.origin_main) + '.' : 'No ' + code('origin/main') + ' ref.', 'falcon'],
+      ['Restore the agent context, credit Ruibin', g.context ? 'done' : 'idle',
+        code('CLAUDE.md') + ' and ' + code('.gitignore') + ' back, original author named in the README, ' + code('test.txt') + ' dropped.',
+        g.context ? 'Checked: both files tracked.' : 'Context files not tracked here.', 'falcon'],
+      ['Channel emulator: C++ model and self-checking testbench', g.emulator ? 'working' : 'idle',
+        'Per channel: integer-sample delay, phase rotation, I/Q bias. 8-bit in, full-precision accumulator, one round and saturate at the output.',
+        g.emulator ? 'Checked: source present' + (g.emulator_tracked ? ', committed.' : ', not yet committed.') +
+          ' Passed under g++ with stand-in headers; Vitis C simulation not run.' : 'Source not on this checkout yet; it is in the session\'s worktree, uncommitted.', 'proposed'],
+      ['Channel emulator: C synthesis, co-simulation, IP package', anyTool ? 'idle' : 'error',
+        'Confirm II=1 at 245.76 MHz and the delay line\'s dependence pragma; package ' + code('nyu.edu:hls:channel_emulator:1.0') + '.',
+        anyTool ? '' : 'Blocked: Vitis 2025.1 is not on this machine.', 'proposed'],
+      ['Integrate into the block design and build a bitstream', 'error',
+        'Place the emulator in the TX or RX path, rebuild, compare against the known-good reports.',
+        'Blocked: no Vivado 2025.1 here, and the last attempt hit ' + code('Common 17-345') + ' (no synthesis licence for ' + code('xczu48dr') + ').', 'proposed'],
+      ['On-board loopback with the PYNQ sounder', 'idle',
+        'RFDC test mode, a known tone, then a safe-power loopback through the emulator.', 'Needs the RFSoC 4x2 board.', 'proposed'],
+      ['Decide how this feeds Falcon', 'idle',
+        'Not written down anywhere yet.', 'Fahad\'s decision; the falcon session owns that side.', 'proposed'],
+    ];
+    $('plan-rows').innerHTML = P.map(function (p, i) {
+      var word = { done: 'Done', working: 'In Progress', idle: 'Not Started', error: 'Blocked' }[p[1]];
+      return row(i + 1, p[1], word, p[0], p[2], p[3], p[4]);
+    }).join('');
+  }
+
+  function progress(S) {
+    var g = S.git, t = S.tools;
+    var sync = g.ahead == null ? NM : (g.ahead === 0 && g.behind === 0 ? 'in step' : g.ahead + ' ahead · ' + g.behind + ' behind');
+    $('git-stats').innerHTML =
+      stat('Head', g.head, (g.subject || '') + (g.date ? ' · ' + g.date : ''), true) +
+      stat('origin/main', g.origin_main, 'as last fetched', true) +
+      stat('Against origin/main', sync, 'branch ' + (g.branch || '?'), true) +
+      stat('Uncommitted Paths', String(g.dirty.length), g.dirty.length ? 'listed below' : 'tree clean');
+
+    var B = [];
+    if (!t['vitis-run'] && !t['v++']) B.push(['Vitis HLS 2025.1 is not installed here',
+      'No C simulation, synthesis or IP packaging can run on this machine, so the emulator\'s Vitis csim and its timing are unmeasured.',
+      'Checked now: ' + code('vitis-run') + ' and ' + code('v++') + ' are not on PATH.']);
+    if (!t.vivado) B.push(['Vivado 2025.1 is not installed here',
+      'No project rebuild, bitstream or report regeneration. The routed figures below are Ruibin\'s, from 2026-07-31.',
+      'Checked now: ' + code('vivado') + ' is not on PATH.']);
+    B.push(['No synthesis licence for the xczu48dr on the last build host',
+      'The validation record reports ' + code('Common 17-345') + ' on 2026-08-11; a second bitstream was never built.',
+      'From docs/VALIDATION.md, not re-checked.']);
+    B.push(['8-bit emulator input vs the 16-bit datapath',
+      'The player and capture IPs carry 16-bit I/Q. Where the 8-bit emulator sits in the block design is Fahad\'s call.',
+      'Waiting on Fahad.']);
+    if (g.emulator && !g.emulator_tracked) B.push(['The emulator is not committed',
+      'Its source is on disk but in no commit, so it is not on GitHub.', 'Waiting on a go-ahead to commit.']);
+    // b[1] is markup built above from code() and literals, so it is not escaped again.
+    $('blocked').innerHTML = B.map(function (b, i) { return row(i + 1, 'error', 'Blocked', b[0], b[1], b[2]); }).join('');
+
+    $('dirty').innerHTML = g.dirty.length
+      ? '<div class="pan"><pre class="rpt">' + esc(g.dirty.join('\n')) + '</pre></div>'
+      : '<p class="empty">Nothing uncommitted.</p>';
+  }
+
+  // Source viewer.
+  var files = [];
+  function loadFile(path) {
+    var f = files.filter(function (x) { return x.path === path; })[0];
+    if (!f) return;
+    $('raw').href = '/src/' + f.path;
+    $('fmeta').innerHTML = code(f.path) + ' · <span class="num">' + f.bytes.toLocaleString() + '</span> bytes' +
+      (f.tracked ? '' : ' · <span class="dim">not committed</span>');
+    $('code').innerHTML = '<p class="empty" style="padding:12px 14px;margin:0">Loading…</p>';
+    fetch('/src/' + f.path, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (text) {
+      var lines = text.replace(/\n$/, '').split('\n');
+      var cmt = /\.(tcl|py|xdc|cfg)$/.test(f.path) ? /^\s*#/ : /^\s*(\/\/|\/\*|\*)/;
+      $('code').innerHTML = '<ol>' + lines.map(function (l) {
+        return '<li' + (cmt.test(l) ? ' class="c"' : '') + '>' + (esc(l) || ' ') + '</li>';
+      }).join('') + '</ol>';
+      $('code').scrollTop = 0;
+      $('fmeta').innerHTML += ' · <span class="num">' + lines.length.toLocaleString() + '</span> lines';
+    }).catch(function () {
+      $('code').innerHTML = '<p class="empty" style="padding:12px 14px;margin:0">Could not load this file.</p>';
+    });
+    try { history.replaceState(null, '', '#src=' + encodeURIComponent(f.path)); } catch (e) {}
+  }
+  function source(S) {
+    files = S.files;
+    if (!files.length) { $('file').innerHTML = '<option>No files</option>'; return; }
+    var groups = {}, order = [];
+    files.forEach(function (f) { if (!groups[f.group]) { groups[f.group] = []; order.push(f.group); } groups[f.group].push(f); });
+    $('file').innerHTML = order.map(function (gname) {
+      return '<optgroup label="' + esc(gname) + '">' + groups[gname].map(function (f) {
+        return '<option value="' + esc(f.path) + '">' + esc(f.path.split('/').slice(-1)[0]) + '</option>';
+      }).join('') + '</optgroup>';
+    }).join('');
+    var want = (location.hash.match(/^#src=(.+)$/) || [])[1];
+    var first = want ? decodeURIComponent(want) : files[0].path;
+    if (!files.some(function (f) { return f.path === first; })) first = files[0].path;
+    $('file').value = first;
+    $('file').onchange = function () { loadFile(this.value); };
+    loadFile(first);
+  }
+
+  function results(S) {
+    var t = S.timing;
+    if (t) {
+      $('timing-stats').innerHTML =
+        stat('WNS (setup)', t.wns && t.wns + ' ns', t.tns_fail != null ? t.tns_fail + ' of ' + t.tns_total + ' endpoints failing' : '') +
+        stat('WHS (hold)', t.whs && t.whs + ' ns', t.ths_fail != null ? t.ths_fail + ' of ' + t.ths_total + ' endpoints failing' : '') +
+        stat('WPWS (pulse width)', t.wpws && t.wpws + ' ns', t.tpws_fail != null ? t.tpws_fail + ' of ' + t.tpws_total + ' endpoints failing' : '') +
+        stat('Constraints', t.met ? 'all met' : 'not met', 'per the report\'s own summary line');
+      $('timing-prov').innerHTML = 'From ' + code('timing_summary_routed.rpt') + ' · ' + esc(t.tool || '') +
+        ' · ' + esc(t.date || 'date not in report') + ' · design state ' + esc(t.state || '?') +
+        '. The channel emulator is not in this build: its timing is not measured.';
+      $('intra').textContent = t.intra || NM;
+      $('clocks').textContent = t.clocks || NM;
+    } else {
+      $('timing-stats').innerHTML = stat('Timing', null, 'report missing');
+    }
+
+    var r = S.route;
+    $('route-stats').innerHTML = r
+      ? stat('Routable Nets', r.routable != null ? r.routable.toLocaleString() : null) +
+        stat('Fully Routed', r.routed != null ? r.routed.toLocaleString() : null) +
+        stat('Routing Errors', r.errors != null ? String(r.errors) : null) +
+        stat('Logical Nets', r.logical != null ? r.logical.toLocaleString() : null)
+      : stat('Route Status', null, 'report missing');
+
+    var d = S.drc;
+    $('drc').innerHTML = d
+      ? '<p class="dim">' + esc(d.found) + ' check(s) found · ' + esc(d.date || '') + '</p>' +
+        '<div class="card" style="padding:4px 8px"><table class="tbl"><thead><tr><th>Rule</th><th>Severity</th><th>Description</th><th>Checks</th></tr></thead><tbody>' +
+        d.rows.map(function (x) {
+          return '<tr><td data-k="Rule">' + code(x.rule) + '</td><td data-k="Severity">' + esc(x.severity) +
+            '</td><td data-k="Description">' + esc(x.desc) + '</td><td data-k="Checks" class="num">' + x.checks + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<p class="empty">drc_routed.rpt is missing.</p>';
+
+    // The g++ run is a record of one session run, not a live result, and it is not Vitis.
+    var GPP = 'g++ with stand-in HLS headers, 2026-10-22: 4 parameter sets passed, 6 of 6 deliberate faults caught. Not Vitis csim.';
+    $('hls').innerHTML = '<thead><tr><th>Design</th><th>Testbench</th><th>Recorded</th><th>This Machine</th></tr></thead><tbody>' +
+      S.hls.map(function (h) {
+        var rec = h.recorded ? st('done', 'Passed') + ' <span class="dim">' + esc(h.recorded) + '</span>' : st('idle', 'Not Measured') + ' <span class="dim">not in the validation record</span>';
+        var loc;
+        if (h.local) loc = (/fail/i.test(h.local) ? st('error', 'Failed') : st('done', 'Passed')) + ' <span class="dim">' + esc(h.local) + '</span>';
+        else if (h.design === 'channel_emulator' && h.present) loc = st('idle', 'Not Measured') + ' <span class="dim">in Vitis. ' + esc(GPP) + '</span>';
+        else loc = st('idle', 'Not Measured') + ' <span class="dim">no Vitis here</span>';
+        return '<tr><td data-k="Design">' + code(h.design) + '</td><td data-k="Testbench">' +
+          (h.present ? code(h.tb) : '<span class="dim">not on this checkout</span>') +
+          '</td><td data-k="Recorded">' + rec + '</td><td data-k="This Machine">' + loc + '</td></tr>';
+      }).join('') + '</tbody>';
+
+    $('validation').innerHTML = S.validation ? md(S.validation) : '<p class="empty">docs/VALIDATION.md is missing.</p>';
+  }
+
+  // Just enough Markdown for VALIDATION.md: headings, bullets, fences, inline code and bold.
+  function md(src) {
+    var out = [], list = false, fence = false, buf = [];
+    function inline(s) {
+      return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    }
+    function endList() { if (list) { out.push('</ul>'); list = false; } }
+    src.split('\n').forEach(function (l) {
+      if (/^```/.test(l)) {
+        if (fence) { out.push('<pre>' + esc(buf.join('\n')) + '</pre>'); buf = []; }
+        else endList();
+        fence = !fence; return;
+      }
+      if (fence) { buf.push(l); return; }
+      var h = l.match(/^(#{1,3})\s+(.*)$/);
+      if (h) { endList(); out.push('<h' + (h[1].length === 1 ? 1 : 2) + '>' + inline(h[2]) + '</h' + (h[1].length === 1 ? 1 : 2) + '>'); return; }
+      var b = l.match(/^\s*[-*]\s+(.*)$/);
+      if (b) { if (!list) { out.push('<ul>'); list = true; } out.push('<li>' + inline(b[1]) + '</li>'); return; }
+      if (/^\s+\S/.test(l) && list) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ' ' + inline(l.trim()) + '</li>'); return; }
+      if (!l.trim()) { endList(); return; }
+      endList(); out.push('<p>' + inline(l) + '</p>');
+    });
+    endList();
+    return out.join('');
+  }
+
+  fetch('/state.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (S) {
+    var reg = S.register || {};
+    if (reg.display) { $('name').textContent = reg.display; $('title').textContent = reg.display; document.title = reg.display; }
+    if (reg.color) document.documentElement.style.setProperty('--tile', reg.color);
+    $('loaded').textContent = 'Read from the repo at ' + new Date().toLocaleString() + '.';
+    plan(S); progress(S); source(S); results(S);
+  }).catch(function () {
+    $('loaded').textContent = 'Could not read /state.json; nothing below is current.';
+  });
+})();
+</script>
+<script>
+  // Theme buttons. A second click on the active theme clears the choice and
+  // hands it back to the OS.
+  (function () {
+    var root = document.documentElement, btns = document.querySelectorAll('.themes button');
+    function sync() {
+      var t = root.getAttribute('data-theme');
+      btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (root.getAttribute('data-theme') === b.dataset.t) {
+          root.removeAttribute('data-theme');
+          document.cookie = 'nomad_theme=; path=/; max-age=0; samesite=lax';
+        } else {
+          root.setAttribute('data-theme', b.dataset.t);
+          document.cookie = 'nomad_theme=' + b.dataset.t + '; path=/; max-age=31536000; samesite=lax';
+        }
+        sync();
+      });
+    });
+    sync();
+  })();
+</script>
+</body>
+</html>

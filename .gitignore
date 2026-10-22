@@ -13,3 +13,6 @@ vitis*.log
 # Claude Code's per-machine permission grants
 .claude/settings.local.json
 .claude/worktrees/
+
+# serve.py imported for a check
+__pycache__/
