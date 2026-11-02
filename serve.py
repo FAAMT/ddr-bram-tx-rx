@@ -25,9 +25,36 @@ SLUG = "ddr-bram-tx-rx"
 # not from this repo; without it the page falls back to the slug.
 REGISTER = Path(os.environ.get("NOMAD_PAGES_TSV", Path.home() / "CLAUDE/shotcheck/pages.tsv"))
 
+# Two versions of the demo, one folder each, so their pages never mix:
+# v1 is the RFSoC 4x2 FPGA data path, v2 the DGX Spark virtual channel emulator.
 PAGES = {
-    "/": HERE / "web/index.html",
-    "/index.html": HERE / "web/index.html",
+    "/rfsoc/": HERE / "web/rfsoc/index.html",
+    "/spark/": HERE / "web/spark/index.html",
+    # The dashboard as it was before the final slide, kept for reference.
+    "/spark/notes": HERE / "web/spark/notes.html",
+    # The outside-audience version: no source, no internal plan, prints as a PDF.
+    "/spark/brief": HERE / "web/spark/brief.html",
+    # The same brief in Ruibin's layout, kept beside the original rather than replacing it.
+    "/spark/brief-ruibin": HERE / "web/spark/brief-ruibin.html",
+    # The final slide, with the UAV scenario: what the dashboard leads with.
+    "/spark/brief-uav": HERE / "web/spark/brief-uav.html",
+}
+# Scripts the brief pages share. The .pptx export builds the deck in the browser, from the page's own SVG.
+SCRIPTS = {
+    "/spark/slide-pptx.js": HERE / "web/spark/slide-pptx.js",
+}
+# Files the pages show or offer, each with its type.
+FILES = {
+    "/spark/uav-scenario.jpg": (HERE / "web/spark/uav-scenario.jpg", "image/jpeg"),
+    "/spark/plan.md": (HERE / "web/spark/plan.md", "text/markdown; charset=utf-8"),
+}
+# Old and bare addresses land on the current version rather than on a 404.
+REDIRECTS = {
+    "/": "/spark/",
+    "/index.html": "/spark/",
+    "/rfsoc": "/rfsoc/",
+    "/spark": "/spark/",
+    "/brief": "/spark/brief",
 }
 
 REPORTS = {
@@ -228,8 +255,18 @@ def state() -> dict:
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0].split("#", 1)[0]
+        if path in REDIRECTS:
+            self.send_response(302)
+            self.send_header("Location", REDIRECTS[path])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if path in PAGES:
             body, kind = PAGES[path].read_bytes(), "text/html; charset=utf-8"
+        elif path in SCRIPTS:
+            body, kind = SCRIPTS[path].read_bytes(), "text/javascript; charset=utf-8"
+        elif path in FILES and FILES[path][0].is_file():
+            body, kind = FILES[path][0].read_bytes(), FILES[path][1]
         elif path == "/state.json":
             body, kind = json.dumps(state(), ensure_ascii=False).encode(), "application/json"
         elif path in SOURCE_PATHS and SOURCE_PATHS[path].is_file():

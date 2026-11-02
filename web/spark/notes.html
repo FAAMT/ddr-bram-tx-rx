@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v2 Working Notes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%20width%3D%2732%27%20height%3D%2732%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27nm%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%278%27%20fill%3D%27url%28%23nm%29%27%2F%3E%3Cpath%20d%3D%27M9%2023V9l5%207%204-5%205%2012%27%20fill%3D%27none%27%20stroke%3D%27%23080909%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E">
+<script>
+  // Theme before first paint. A cookie, not localStorage: it ignores the port,
+  // so one choice carries across every page on the tailnet host.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+  })();
+</script>
+<style>
+:root {
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'JetBrains Mono', Consolas, monospace;
+
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12);
+  --header-bg: rgba(8, 9, 9, .55);
+
+  /* The tile identifies the tool and is the register's colour; JS overwrites it from there. */
+  --tile: #ffd23d; --tile-glow: rgba(255, 210, 61, .35);
+
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+    --line: #d5d9d3; --line-2: #b7bdb6;
+    --text: #121412; --dim: #3f4741; --muted: #586259;
+    --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+    --accent-tint: rgba(10, 111, 148, .08);
+    --header-bg: rgba(246, 247, 243, .75);
+    --tile-glow: rgba(122, 96, 0, .18);
+    --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+    --line: #8a8a8a; --line-2: #c0c0c0;
+    --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+    --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+    --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+    --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+  }
+}
+[data-theme="dark"] {
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12); --header-bg: rgba(8, 9, 9, .55);
+  --tile-glow: rgba(255, 210, 61, .35);
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+[data-theme="light"] {
+  --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+  --line: #d5d9d3; --line-2: #b7bdb6;
+  --text: #121412; --dim: #3f4741; --muted: #586259;
+  --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+  --accent-tint: rgba(10, 111, 148, .08); --header-bg: rgba(246, 247, 243, .75);
+  --tile-glow: rgba(122, 96, 0, .18);
+  --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+}
+[data-theme="contrast"] {
+  --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+  --line: #8a8a8a; --line-2: #c0c0c0;
+  --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+  --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+  --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+  --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+}
+::selection { background: var(--accent); color: var(--bg); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: .95em; color: var(--text); background: var(--card-2);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.bar { max-width: 1120px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px;
+         color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
+.brand-mark {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex: none;
+  color: #080909; background: var(--tile); box-shadow: 0 4px 18px var(--tile-glow);
+}
+nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+nav a { white-space: nowrap; color: var(--dim); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+nav a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.themes { display: flex; gap: 4px; }
+.themes button {
+  font-family: var(--mono); font-size: 11px; color: var(--dim); background: var(--card);
+  border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; cursor: pointer;
+}
+.themes button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+
+main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+section { margin-top: 44px; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 18px 0 8px; }
+.label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+.deck { color: var(--dim); margin: 0 0 16px; max-width: 78ch; }
+p { margin: 0 0 10px; }
+.dim { color: var(--dim); }
+.num { font-variant-numeric: tabular-nums; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.grid { display: grid; gap: 12px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.stat .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .v.small { font-size: 15px; }
+.stat .s { color: var(--dim); font-size: 12px; }
+.prov { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+
+/* status: glyph + word, never colour alone */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin: 8px 0 12px; }
+.st { white-space: nowrap; font-weight: 700; }
+.st.idle { color: var(--idle); } .st.working { color: var(--working); }
+.st.done { color: var(--done); } .st.error { color: var(--error); }
+.st .w { color: var(--text); font-weight: 400; margin-left: 4px; }
+
+.rows { display: grid; gap: 8px; }
+.row { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--idle);
+       border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 10px; }
+.row.done { border-left-color: var(--done); } .row.working { border-left-color: var(--working); }
+.row.error { border-left-color: var(--error); }
+.row .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .t { font-weight: 700; }
+.row .d { grid-column: 2 / 4; color: var(--dim); }
+.row .why { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
+.tag { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th { text-align: left; font-weight: 400; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+          color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: 0; }
+
+/* Report excerpts and code keep their columns and pan inside their own box. */
+.pan { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+pre.rpt { margin: 0; padding: 12px 14px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+          color: var(--dim); white-space: pre; width: max-content; min-width: 100%; }
+
+.picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+select, .btn {
+  font-family: var(--mono); font-size: 12.5px; color: var(--text); background: var(--card-2);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 10px;
+}
+select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
+.btn { cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.btn:hover { background: var(--card-3); text-decoration: none; }
+.fmeta { color: var(--dim); font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.code { max-height: 72vh; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.code ol { margin: 0; padding: 10px 0; list-style: none; counter-reset: ln; width: max-content; min-width: 100%; }
+.code li { counter-increment: ln; white-space: pre; font-size: 12px; line-height: 1.55; padding-right: 16px; }
+.code li::before { content: counter(ln); display: inline-block; width: 5ch; margin-right: 14px; padding-right: 8px;
+                   text-align: right; color: var(--muted); border-right: 1px solid var(--line);
+                   font-variant-numeric: tabular-nums; user-select: none; }
+.code li.c { color: var(--muted); }
+.empty { color: var(--dim); }
+
+.md h1, .md h2 { font-size: 15px; margin: 18px 0 6px; }
+.md h1:first-child { margin-top: 0; }
+.md ul { margin: 0 0 10px; padding-left: 20px; }
+.md li { margin-bottom: 4px; color: var(--dim); }
+.md p { color: var(--dim); }
+.md pre { background: var(--card-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+/* Demo version switch: the two testbeds live on separate pages so they are never mixed. */
+.ver { max-width: 1120px; margin: 0 auto; padding: 8px 20px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ver .ver-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-right: 4px; }
+.ver a { border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; color: var(--dim); font-size: 12px; background: var(--card); }
+.ver a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.ver a[aria-current="page"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+.ver a b { color: var(--accent); margin-right: 4px; }
+
+/* Figures drawn in the page's own tokens, so they follow the theme. */
+.fig-pan { padding: 12px; }
+.fig { display: block; width: 100%; min-width: 760px; height: auto; }
+.fig text { font-family: var(--mono); font-size: 13px; fill: var(--text); }
+.fig .s { fill: var(--dim); } .fig .b { font-weight: 700; } .fig .c { text-anchor: middle; } .fig .e { text-anchor: end; }
+.fig .m { fill: var(--accent); }
+.fig .ln, .fig .ax { stroke: var(--line-2); stroke-width: 1.6; fill: none; }
+.fig .lnA { stroke: var(--accent); stroke-width: 2; fill: none; }
+.fig marker path { fill: var(--line-2); }
+.fig .pt { fill: var(--accent); }
+.fig .rgd { fill: var(--card); stroke: var(--line-2); stroke-width: 1.4; }
+.fig .gl2 line { stroke: var(--line); stroke-width: 1; }
+.fig .col { fill: none; stroke: var(--accent); stroke-width: 2; }
+.fig .sk text { text-anchor: middle; font-size: 12.5px; }
+.fig .br { fill: none; stroke: var(--accent-2); stroke-width: 1.6; }
+.fig .bar rect { fill: var(--card-2); stroke: var(--line-2); stroke-width: 1; }
+.fig .bar rect:nth-child(odd) { fill: var(--accent-tint); }
+.fig .box { fill: var(--card); stroke: var(--line-2); stroke-width: 1.4; }
+.fig .foc { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.fig .prod { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.fig .sock { fill: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* 860px: one breakpoint, appended last */
+@media (max-width: 860px) {
+  body { min-height: 100vh; min-height: 100dvh; }
+  .bar { flex-wrap: wrap; padding: 10px 16px; }
+  main { padding: 20px 16px 64px; }
+  nav { margin-left: 0; order: 3; width: 100%; }
+  .themes { margin-left: auto; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .row { grid-template-columns: 24px 1fr; }
+  .row .st { grid-column: 2; }
+  .row .d, .row .why { grid-column: 2; }
+  /* Tables stack into one card per row. */
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .tbl tr:last-child { border-bottom: 0; }
+  .tbl td { border: 0; padding: 2px 8px; overflow-wrap: anywhere; }
+  .tbl td[data-k]::before { content: attr(data-k); display: block; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tbl td:first-child { font-weight: 700; }
+  .code { max-height: 70vh; }
+}
+@media (pointer: coarse) {
+  nav a, .themes button, select, .btn, .ver a { min-height: 40px; display: inline-flex; align-items: center; }
+  nav a { padding: 4px 10px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ver" role="navigation" aria-label="Demo version">
+    <span class="ver-l">Demo version</span>
+    <a href="/rfsoc/"><b>v1</b>RFSoC 4x2 · FPGA data path</a>
+    <a href="/spark/" aria-current="page"><b>v2</b>DGX Spark · virtual channel emulator</a>
+  </div>
+  <div class="bar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M9 23V9l5 7 4-5 5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>ddr-bram-tx-rx · v2</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#system">System</a>
+      <a href="#sockets">Sockets</a>
+      <a href="#loop">Loop</a>
+      <a href="#subcarriers">OFDM</a>
+      <a href="#rt">Sionna RT</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#decisions">Decisions</a>
+      <a href="#status">Status</a>
+      <a href="/spark/">Dashboard</a>
+    </nav>
+    <div class="themes" role="group" aria-label="Theme">
+      <button data-t="dark">Dark</button><button data-t="light">Light</button><button data-t="contrast">Contrast</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h1>Working notes: the earlier design</h1>
+  <p class="deck"><b>Kept for reference.</b> These notes come from before the final slide. The diagram on the
+    <a href="/spark/">dashboard</a> is the source of truth now, and <code>plan.md</code> is how it gets built.
+    Where anything below disagrees with them, the diagram wins.</p>
+  <p class="deck">Version 2 of the demo. The channel emulator moves off the RFSoC and into software on one DGX
+    Spark: OCUDU DUs and OAI UEs exchange IQ over ZMQ, and a Sionna PHY channel runs on the GPU in between.
+    No FPGA build, tool licence or bitstream is involved. This is a design: nothing below has been built or
+    run yet, and every figure is either from a cited source or marked as an estimate.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Streams</div><div class="v num">4</div><div class="s">2 cells × DL and UL</div></div>
+    <div class="stat"><div class="label">Sample rate</div><div class="v num">61.44 Msps</div><div class="s">40 MHz, 30 kHz SCS, <code>N_RB=106</code></div></div>
+    <div class="stat"><div class="label">Block</div><div class="v num">30,720</div><div class="s">samples, one 0.5 ms slot</div></div>
+    <div class="stat"><div class="label">Taps</div><div class="v num">198</div><div class="s">estimate, at 3 µs delay spread</div></div>
+  </div>
+
+  <!-- 1. System -->
+  <section id="system">
+    <div class="label">System</div>
+    <h2>Where each part runs</h2>
+    <p class="deck">The one-page diagram is the <a href="/spark/brief">brief</a>. In words, end to end:</p>
+    <div class="rows">
+      <div class="row"><span class="n">1</span><span class="t">OCUDU CU and two DUs</span><span class="tag">Arm CPU</span>
+        <span class="d">One CU, two DUs, one cell each. Each DU uses the stock <code>zmq</code> radio driver instead of a USRP.</span></div>
+      <div class="row"><span class="n">2</span><span class="t">IQ broker</span><span class="tag">Arm CPU</span>
+        <span class="d">A Python process that sits in every ZMQ link between a DU and its UE. It answers each pull with exactly the samples asked for.</span></div>
+      <div class="row"><span class="n">3</span><span class="t">Channel emulator</span><span class="tag">GPU</span>
+        <span class="d">Sionna PHY on the Blackwell GPU. It filters each block, adds noise and bias, and hands it back through unified memory.</span></div>
+      <div class="row"><span class="n">4</span><span class="t">Live taps publisher</span><span class="tag">GPU</span>
+        <span class="d">Publishes new channel taps on <code>PUB tcp://127.0.0.1:5566</code>; the emulator swaps them in between slots.</span></div>
+      <div class="row"><span class="n">5</span><span class="t">OAI UEs</span><span class="tag">UE side</span>
+        <span class="d">Two <code>nr-uesoftmodem</code> instances, one per cell, each in its own network namespace (<code>ue1</code>, <code>ue2</code>).</span></div>
+      <div class="row"><span class="n">6</span><span class="t">UE broker</span><span class="tag">UE side</span>
+        <span class="d">A script that joins the two UE interfaces to the multipath TCP client, one subflow per UE.</span></div>
+    </div>
+  </section>
+
+  <!-- 2. Sockets -->
+  <section id="sockets">
+    <div class="label">Sockets</div>
+    <h2>The ZMQ links</h2>
+    <p class="deck">Every IQ link is ZMQ request/reply: the reader asks, the writer answers. The DU side is read from
+      the OCUDU source (<code>lib/radio/zmq/</code>). Port numbers are the TOSSI reference set for one gNB; the
+      second DU's pair is not chosen yet.</p>
+    <div class="card" style="padding:4px 8px">
+      <table class="tbl">
+        <thead><tr><th>Link</th><th>Socket</th><th>Binds or connects</th><th>Format</th><th>Port</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Link">DU transmit (DL out)</td><td data-k="Socket"><code>ZMQ_REP</code></td><td data-k="Binds or connects">binds; answers a 1-byte request</td><td data-k="Format">complex float32 (<code>cf_t</code>)</td><td data-k="Port"><code>:4556</code></td></tr>
+          <tr><td data-k="Link">DU receive (UL in)</td><td data-k="Socket"><code>ZMQ_REQ</code></td><td data-k="Binds or connects">connects; sends a dummy request</td><td data-k="Format">complex float32</td><td data-k="Port"><code>:4557</code></td></tr>
+          <tr><td data-k="Link">IQ broker, DU side</td><td data-k="Socket"><code>REQ</code> + <code>REP</code></td><td data-k="Binds or connects">mirror of the DU: pulls DL, serves UL</td><td data-k="Format">complex float32</td><td data-k="Port">as above</td></tr>
+          <tr><td data-k="Link">IQ broker, UE side</td><td data-k="Socket"><code>REQ</code> + <code>REP</code></td><td data-k="Binds or connects">which side binds: not stated in the reference</td><td data-k="Format">cf32 (TOSSI)</td><td data-k="Port">not chosen</td></tr>
+          <tr><td data-k="Link">Live taps</td><td data-k="Socket"><code>PUB</code> → <code>SUB</code></td><td data-k="Binds or connects">publisher binds; emulator subscribes</td><td data-k="Format">48-byte header + <code>complex64</code> taps</td><td data-k="Port"><code>:5566</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Live taps message</h3>
+    <p class="dim">Kept identical to the TOSSI format so its tooling stays usable: little-endian
+      <code>magic=0x4F434952</code>, <code>version=1</code>, <code>sequence</code>, <code>num_snapshots</code>,
+      <code>num_tx_ant</code>, <code>num_rx_ant</code>, <code>num_taps</code>, <code>loop</code> (uint32), then
+      <code>fs_hz</code> and <code>snapshot_dt_s</code> (double). Limits: 64 taps, 4 antennas a side;
+      <code>fs_hz</code> must equal the stream rate. A malformed update is dropped and the last good taps stay.</p>
+  </section>
+
+  <!-- 3. Loop -->
+  <section id="loop">
+    <div class="label">Loop</div>
+    <h2>The emulator loop, every 0.5 ms slot</h2>
+    <p class="deck">Sionna 2.2.0; PHY is PyTorch. All calls are in <code>sionna.phy.channel</code>.</p>
+    <div class="card" style="padding:4px 8px">
+      <table class="tbl">
+        <thead><tr><th>Step</th><th>Call</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Step">1 · Pull</td><td data-k="Call"><code>REQ</code></td><td data-k="What it does">30,720 IQ samples per stream from the DU (DL) or UE (UL)</td></tr>
+          <tr><td data-k="Step">Decision</td><td data-k="Call"><code>SUB :5566</code></td><td data-k="What it does">new taps waiting? Yes: swap them in and go to step 4</td></tr>
+          <tr><td data-k="Step">2 · Taps</td><td data-k="Call"><code>tr38901.TDL(model, delay_spread, carrier_frequency, min_speed, max_speed)</code></td><td data-k="What it does">3GPP multipath model; called with <code>(batch_size, num_time_steps, sampling_frequency)</code>, returns <code>a, tau</code></td></tr>
+          <tr><td data-k="Step">3 · Sample</td><td data-k="Call"><code>cir_to_time_channel(bandwidth, a, tau, l_min, l_max)</code></td><td data-k="What it does">paths to discrete taps by sinc interpolation; span from <code>time_lag_discrete_time_channel</code></td></tr>
+          <tr><td data-k="Step">4 · Filter</td><td data-k="Call"><code>ApplyTimeChannel(num_time_samples, l_tot)</code></td><td data-k="What it does">time-varying convolution on the GPU; output is <code>N + l_tot − 1</code>, so the tail carries into the next slot</td></tr>
+          <tr><td data-k="Step">5 · Noise</td><td data-k="Call"><code>AWGN()</code></td><td data-k="What it does">noise at the set power, then the I/Q bias</td></tr>
+          <tr><td data-k="Step">6 · Return</td><td data-k="Call"><code>REP</code></td><td data-k="What it does">exactly 30,720 samples, so the link stays in step</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prov">The v1 equation, <code>y[n] = e^{jφ}·x[n − d] + b</code>, is the one-path case: <code>a = e^{jφ}</code>,
+      <code>tau = d / fs</code> through the same <code>cir_to_time_channel</code>, bias added after.</p>
+  </section>
+
+  <!-- 3b. Subcarriers -->
+  <section id="subcarriers">
+    <div class="label">OFDM</div>
+    <h2>Orthogonal Frequency-Division Multiplexing (OFDM)</h2>
+    <p class="deck">Each subcarrier carries one QAM symbol; an IFFT sums all N into one OFDM symbol. Symbols fill the
+      grid frequency-first, S<sub>0</sub> … S<sub>N−1</sub> down OFDM symbol 0, then S<sub>N</sub> onward; N = 12 in
+      the figure is an example. After the IFFT and cyclic prefix in the DU (downlink) or UE (uplink), one slot is one
+      30,720-sample block on each ZMQ stream. The emulator's plain pipe only ever sees those time samples.</p>
+    <div class="pan fig-pan">
+      <svg class="fig" viewBox="0 0 980 404" role="img" aria-label="Every 2 bits pick one of 4 QAM points, S_k = I + jQ. The symbols fill a resource grid frequency-first: S_0 to S_N-1 down OFDM symbol 0, then S_N onward. Subcarriers k = 0 to N-1 are 30 kHz apart, N = 12 in the example, one resource block. A slot is OFDM symbols l = 0 to 13, 0.5 ms. After IFFT and CP, one slot is 30,720 samples on each DL and UL stream.">
+        <defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>
+        <text x="20" y="34" class="m">01 00 11 10 …</text>
+        <line class="ln" x1="90" y1="46" x2="90" y2="88" marker-end="url(#fa)"/><text x="102" y="62" class="b">4-QAM</text><text x="102" y="80" class="s">2 bits → 1 point</text>
+        <line class="ax" x1="20" y1="200" x2="180" y2="200" marker-end="url(#fa)"/><line class="ax" x1="100" y1="290" x2="100" y2="110" marker-end="url(#fa)"/>
+        <text x="180" y="220" class="b">I</text><text x="92" y="122" class="b e">Q</text>
+        <circle class="pt" cx="60" cy="160" r="6"/><circle class="pt" cx="140" cy="160" r="6"/><circle class="pt" cx="60" cy="240" r="6"/><circle class="pt" cx="140" cy="240" r="6"/>
+        <text x="60" y="146" class="c">10</text><text x="140" y="146" class="c">00</text><text x="60" y="264" class="c">11</text><text x="140" y="264" class="c">01</text>
+        <text x="100" y="306" class="c">Sₖ = I + jQ</text>
+        <line class="ln" x1="200" y1="200" x2="280" y2="200" marker-end="url(#fa)"/><text x="240" y="190" class="s c">Sₖ</text>
+        <line class="ax" x1="300" y1="346" x2="300" y2="70" marker-end="url(#fa)"/><text x="292" y="40" class="b e">f</text>
+        <text x="310" y="40" class="s">subcarrier k = 0 … N−1, 30 kHz apart</text><text x="310" y="58" class="s">example: N = 12, one resource block (RB)</text>
+        <rect class="rgd" x="320" y="70" width="330" height="264"/>
+        <g class="gl2"><line x1="320" y1="92" x2="650" y2="92"/><line x1="320" y1="114" x2="650" y2="114"/><line x1="320" y1="136" x2="650" y2="136"/><line x1="320" y1="158" x2="650" y2="158"/><line x1="320" y1="180" x2="650" y2="180"/><line x1="320" y1="202" x2="650" y2="202"/><line x1="320" y1="224" x2="650" y2="224"/><line x1="320" y1="246" x2="650" y2="246"/><line x1="320" y1="268" x2="650" y2="268"/><line x1="320" y1="290" x2="650" y2="290"/><line x1="320" y1="312" x2="650" y2="312"/><line x1="470" y1="70" x2="470" y2="334"/><line x1="600" y1="70" x2="600" y2="334"/></g>
+        <line class="rgd" x1="370" y1="70" x2="370" y2="334"/><line class="rgd" x1="420" y1="70" x2="420" y2="334"/>
+        <rect class="col" x="320" y="70" width="50" height="264"/>
+        <g class="sk"><text x="345" y="85">S<tspan dy="3" font-size="10.5">0</tspan></text><text x="345" y="107">S<tspan dy="3" font-size="10.5">1</tspan></text><text x="345" y="129">S<tspan dy="3" font-size="10.5">2</tspan></text><text x="345" y="217">⋮</text><text x="345" y="327">S<tspan dy="3" font-size="10.5">N−1</tspan></text><text x="395" y="85">S<tspan dy="3" font-size="10.5">N</tspan></text><text x="395" y="107">S<tspan dy="3" font-size="10.5">N+1</tspan></text><text x="395" y="217">⋮</text><text x="395" y="327">S<tspan dy="3" font-size="10.5">2N−1</tspan></text></g>
+        <text x="535" y="206" class="s c">…</text>
+        <path class="br" d="M658 72 h6 v260 h-6"/><text x="670" y="206" class="b">RB</text>
+        <line class="ax" x1="320" y1="352" x2="660" y2="352" marker-end="url(#fa)"/><text x="490" y="372" class="s c">t, OFDM symbol l = 0 … 13</text>
+        <text x="490" y="396" class="c"><tspan class="b">slot</tspan> = 14 OFDM symbols = 0.5 ms · 10 ms frame = 20 slots</text>
+        <text x="720" y="90" class="s">IFFT + CP in the DU (DL)</text><text x="720" y="110" class="s">or the UE (UL)</text>
+        <text x="720" y="144" class="b">1 slot = 30,720 samples</text><text x="720" y="164" class="s">= 14 × 2048 + CP</text>
+        <text x="720" y="206" class="b">DL ×2</text>
+        <g class="bar"><rect x="720" y="214" width="18" height="22"/><rect x="738" y="214" width="18" height="22"/><rect x="756" y="214" width="18" height="22"/><rect x="774" y="214" width="18" height="22"/><rect x="792" y="214" width="18" height="22"/><rect x="810" y="214" width="18" height="22"/><rect x="828" y="214" width="18" height="22"/><rect x="846" y="214" width="18" height="22"/><rect x="864" y="214" width="18" height="22"/><rect x="882" y="214" width="18" height="22"/><rect x="900" y="214" width="18" height="22"/><rect x="918" y="214" width="18" height="22"/><rect x="936" y="214" width="18" height="22"/><rect x="954" y="214" width="18" height="22"/></g>
+        <text x="720" y="270" class="b">UL ×2</text>
+        <g class="bar"><rect x="720" y="278" width="18" height="22"/><rect x="738" y="278" width="18" height="22"/><rect x="756" y="278" width="18" height="22"/><rect x="774" y="278" width="18" height="22"/><rect x="792" y="278" width="18" height="22"/><rect x="810" y="278" width="18" height="22"/><rect x="828" y="278" width="18" height="22"/><rect x="846" y="278" width="18" height="22"/><rect x="864" y="278" width="18" height="22"/><rect x="882" y="278" width="18" height="22"/><rect x="900" y="278" width="18" height="22"/><rect x="918" y="278" width="18" height="22"/><rect x="936" y="278" width="18" height="22"/><rect x="954" y="278" width="18" height="22"/></g>
+        <rect class="col" x="720" y="214" width="18" height="22"/><rect class="col" x="720" y="278" width="18" height="22"/>
+        <text x="720" y="326" class="s">one cell = one OFDM symbol</text>
+      </svg>
+    </div>
+    <div class="card" style="padding:4px 8px;margin-top:12px">
+      <table class="tbl">
+        <thead><tr><th>Quantity</th><th>Value</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Quantity">Subcarrier spacing</td><td data-k="Value">30 kHz</td><td data-k="Note">numerology 1</td></tr>
+          <tr><td data-k="Quantity">FFT size</td><td data-k="Value">2048</td><td data-k="Note">61.44 Msps ÷ 30 kHz</td></tr>
+          <tr><td data-k="Quantity">Used subcarriers</td><td data-k="Value">1,272 at 40 MHz</td><td data-k="Note">106 RB × 12; the N = 12 in the figure is an example</td></tr>
+          <tr><td data-k="Quantity">Slot</td><td data-k="Value">14 OFDM symbols, 0.5 ms</td><td data-k="Note">30,720 samples = 14 × 2048 + 13 × 144 + 176 (cyclic prefix)</td></tr>
+          <tr><td data-k="Quantity">Frame</td><td data-k="Value">10 ms</td><td data-k="Note">20 slots</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3c. Sionna RT -->
+  <section id="rt">
+    <div class="label">Sionna RT</div>
+    <h2>Sionna RT in the loop, and where the FFT goes</h2>
+    <p class="deck">IQ from the server at t₀ is transformed to subcarriers, each subcarrier symbol is multiplied by
+      the channel Hₖ from Sionna RT, and the result reaches the UE at tₙ.</p>
+    <div class="pan fig-pan">
+      <svg class="fig" viewBox="0 0 980 280" role="img" aria-label="Server sends IQ at t0 through a ZMQ socket into an FFT, giving S_k per subcarrier, multiplied by H_k from Sionna RT; an IFFT and cyclic prefix return to time t_n at the UE. Sionna RT computes H_k with PathSolver and Paths.cfr.">
+        <defs><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>
+        <rect class="box" x="10" y="40" width="110" height="70" rx="6"/><text x="65" y="70" class="b c">Server</text><text x="65" y="92" class="s c">IQ at t₀</text>
+        <line class="ln" x1="120" y1="75" x2="168" y2="75" marker-end="url(#fb)"/><text x="144" y="66" class="s c">IQ</text>
+        <rect class="sock" x="172" y="40" width="8" height="70"/>
+        <rect class="box" x="180" y="40" width="150" height="70" rx="6"/><text x="255" y="66" class="b c">FFT</text><text x="255" y="86" class="m c">OFDMDemodulator</text><text x="255" y="104" class="s c">CP removed</text>
+        <line class="ln" x1="330" y1="75" x2="378" y2="75" marker-end="url(#fb)"/><text x="354" y="66" class="s c">Sₖ</text>
+        <ellipse class="prod" cx="475" cy="75" rx="92" ry="34"/><text x="475" y="80" class="b c">Hₖ · Sₖ</text>
+        <line class="ln" x1="567" y1="75" x2="618" y2="75" marker-end="url(#fb)"/>
+        <rect class="box" x="620" y="40" width="150" height="70" rx="6"/><text x="695" y="66" class="b c">IFFT + CP</text><text x="695" y="86" class="m c">OFDMModulator</text><text x="695" y="104" class="s c">CP added</text>
+        <line class="ln" x1="770" y1="75" x2="828" y2="75" marker-end="url(#fb)"/><text x="799" y="66" class="s c">tₙ</text>
+        <rect class="sock" x="830" y="40" width="8" height="70"/>
+        <rect class="box" x="838" y="40" width="130" height="70" rx="6"/><text x="903" y="70" class="b c">UE</text><text x="903" y="92" class="s c">OAI</text>
+        <rect class="foc" x="375" y="170" width="200" height="100" rx="6"/><text x="475" y="194" class="b c">Sionna RT</text><text x="475" y="216" class="m c">PathSolver()(scene)</text><text x="475" y="236" class="m c">Paths.cfr(frequencies)</text><text x="475" y="256" class="s c">Hₖ at each subcarrier k</text>
+        <line class="lnA" x1="475" y1="170" x2="475" y2="112" marker-end="url(#fb)"/><text x="484" y="150" class="s">Hₖ</text>
+      </svg>
+    </div>
+    <p class="dim" style="margin:8px 0 0;font-size:13px">Key: accent outline, Sionna RT and the product it feeds ·
+      grey bar, a ZMQ socket.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:12px">
+      <div class="card" style="border-left:3px solid var(--done)">
+        <div class="label">FFT placement</div>
+        <p style="margin:0 0 6px"><b>On the IQ path, before the channel is applied</b>: IQ → FFT → Hₖ · Sₖ → IFFT.</p>
+        <p class="dim" style="margin:0"><b>Outside Sionna RT.</b> Sionna RT never receives IQ samples; it returns Hₖ at the subcarrier
+          frequencies (<code>Paths.cfr</code>). The FFT is <code>OFDMDemodulator</code> in Sionna PHY.</p>
+      </div>
+      <div class="card" style="border:1px dashed var(--line-2)">
+        <div class="label">Not settled by the whiteboard</div>
+        <p class="dim" style="margin:0">An arc over the FFT box runs to a second “Sionna RT” label, so the board may be grouping the
+          FFT inside Sionna RT. The IFFT is not drawn; tₙ implies it. “Outside” follows the Sionna RT API, which has
+          no call that takes IQ.</p>
+      </div>
+    </div>
+    <h3>The calls on this path</h3>
+    <div class="card" style="padding:4px 8px">
+      <table class="tbl">
+        <thead><tr><th>Step</th><th>Call</th><th>Library</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Step">FFT, CP removed</td><td data-k="Call"><code>sionna.phy.ofdm.OFDMDemodulator(fft_size, l_min, cyclic_prefix_length)</code></td><td data-k="Library">Sionna PHY</td></tr>
+          <tr><td data-k="Step">Subcarrier frequencies</td><td data-k="Call"><code>sionna.phy.channel.subcarrier_frequencies(num_subcarriers, subcarrier_spacing)</code></td><td data-k="Library">Sionna PHY</td></tr>
+          <tr><td data-k="Step">Paths in the scene</td><td data-k="Call"><code>PathSolver()(scene, max_depth=5)</code></td><td data-k="Library">Sionna RT</td></tr>
+          <tr><td data-k="Step">H per subcarrier</td><td data-k="Call"><code>Paths.cfr(frequencies, sampling_frequency, num_time_steps, out_type="torch")</code></td><td data-k="Library">Sionna RT</td></tr>
+          <tr><td data-k="Step">Hₖ · Sₖ</td><td data-k="Call"><code>sionna.phy.channel.ApplyOFDMChannel()</code>, <code>y = h·x + w</code> per symbol and subcarrier</td><td data-k="Library">Sionna PHY</td></tr>
+          <tr><td data-k="Step">IFFT, CP added</td><td data-k="Call"><code>sionna.phy.ofdm.OFDMModulator</code></td><td data-k="Library">Sionna PHY</td></tr>
+          <tr><td data-k="Step">Time-domain alternative</td><td data-k="Call"><code>Paths.taps(bandwidth, l_min, l_max)</code> feeding the existing <code>ApplyTimeChannel</code> loop</td><td data-k="Library">Sionna RT</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. Hardware -->
+  <section id="hardware">
+    <div class="label">Hardware</div>
+    <h2>The GB10 SoC, and what each part is for here</h2>
+    <div class="card" style="padding:4px 8px">
+      <table class="tbl">
+        <thead><tr><th>Block</th><th>Spec</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Block">Arm CPU</td><td data-k="Spec">20 cores, two clusters (reported 10× Cortex-X925 + 10× Cortex-A725)</td><td data-k="Role">CU, DUs, UEs, both brokers</td></tr>
+          <tr><td data-k="Block">Blackwell GPU</td><td data-k="Spec">6,144 CUDA cores, 24 MB L2, 31 TFLOPS FP32</td><td data-k="Role">Sionna taps and filter</td></tr>
+          <tr><td data-k="Block">NVLink-C2C</td><td data-k="Spec">600 GB/s, CPU–GPU coherent</td><td data-k="Role">IQ blocks cross without PCIe</td></tr>
+          <tr><td data-k="Block">Memory</td><td data-k="Spec">128 GB unified LPDDR5x, 273 GB/s</td><td data-k="Role">one pool for broker buffers and GPU tensors</td></tr>
+          <tr><td data-k="Block">USB4 ×4</td><td data-k="Spec">40 Gb/s each</td><td data-k="Role">a USRP, for the later over-the-air step</td></tr>
+          <tr><td data-k="Block">10 GbE</td><td data-k="Spec">RJ45</td><td data-k="Role">5G core traffic</td></tr>
+          <tr><td data-k="Block">ConnectX-7</td><td data-k="Spec">2 × 200 G on PCIe 5.0 x8</td><td data-k="Role">a second Spark; not in the IQ path</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prov">Load estimate: 4 streams × 61.44 Msps × 8 B ≈ 2 GB/s, under 1% of memory bandwidth; about 24 M
+      complex multiply-adds per slot across all streams. Launch and hand-off time, not arithmetic, should set the
+      latency. Unified memory does not make PyTorch zero-copy by default; that has to be measured.</p>
+  </section>
+
+  <!-- 5. Decisions -->
+  <section id="decisions">
+    <div class="label">Decisions</div>
+    <h2>Settled on 2026-10-26</h2>
+    <div class="card" style="padding:4px 8px">
+      <table class="tbl">
+        <thead><tr><th>Question</th><th>Decision</th><th>What follows</th></tr></thead>
+        <tbody>
+          <tr><td data-k="Question">Platform</td><td data-k="Decision">DGX Spark, not the RFSoC</td><td data-k="What follows">no FPGA build, licence or bitstream; runs beside the 5G stack</td></tr>
+          <tr><td data-k="Question">UE</td><td data-k="Decision">OAI <code>nr-uesoftmodem</code></td><td data-k="What follows">same as the TOSSI reference; two instances</td></tr>
+          <tr><td data-k="Question">Bandwidth</td><td data-k="Decision">40 MHz for now</td><td data-k="What follows">61.44 Msps; the DU configs need a 40 MHz ZMQ variant</td></tr>
+          <tr><td data-k="Question">DUs</td><td data-k="Decision">both</td><td data-k="What follows">four streams through one emulator</td></tr>
+          <tr><td data-k="Question">GPU latency</td><td data-k="Decision">whatever the Spark delivers</td><td data-k="What follows">measured, not targeted; ZMQ slows the link instead of breaking it</td></tr>
+          <tr><td data-k="Question">Channel source</td><td data-k="Decision">plain IQ pipe, live option kept</td><td data-k="What follows">no 3D scene; taps from Sionna PHY or set by hand</td></tr>
+          <tr><td data-k="Question">UE to multipath TCP</td><td data-k="Decision">a broker process</td><td data-k="What follows">mechanism open</td></tr>
+          <tr><td data-k="Question">Sionna RT</td><td data-k="Decision">in the loop, per the whiteboard</td><td data-k="What follows">supplies H per subcarrier after an FFT; needs a scene, which the plain-pipe decision above set aside. How the two coexist is open</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6. Status -->
+  <section id="status">
+    <div class="label">Status</div>
+    <h2>Where it stands</h2>
+    <div class="legend" aria-label="Status legend">
+      <span class="st done">✓<span class="w">Done</span></span>
+      <span class="st working">▶<span class="w">In Progress</span></span>
+      <span class="st idle">●<span class="w">Not Started</span></span>
+    </div>
+    <div class="rows">
+      <div class="row done"><span class="n">1</span><span class="t">Design and facts</span><span class="st done">✓<span class="w">Done</span></span>
+        <span class="d">This page and the brief. Sources below.</span></div>
+      <div class="row working"><span class="n">2</span><span class="t">Reference model and testbench</span><span class="st working">▶<span class="w">In Progress</span></span>
+        <span class="d">Carried over from v1: the C++ model is bit-exact in 4 of 4 configs and caught 6 of 6 injected faults.</span></div>
+      <div class="row"><span class="n">3</span><span class="t">IQ broker over ZMQ</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">Pass-through first, no channel: the UEs must attach through it unchanged.</span></div>
+      <div class="row"><span class="n">4</span><span class="t">Emulator on the Spark GPU</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">The one-path equation first, checked against the reference model; then <code>tr38901.TDL</code>.</span></div>
+      <div class="row"><span class="n">5</span><span class="t">Live taps</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">Publisher on <code>:5566</code>, swap between slots.</span></div>
+      <div class="row"><span class="n">6</span><span class="t">Two UEs and the UE broker</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">Namespaces <code>ue1</code>, <code>ue2</code>; one multipath TCP subflow per UE.</span></div>
+      <div class="row"><span class="n">7</span><span class="t">Latency measurement</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">Time per block against the 0.5 ms slot.</span></div>
+      <div class="row"><span class="n">8</span><span class="t">Over-the-air</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">A USRP on USB4, later.</span></div>
+      <div class="row"><span class="n">9</span><span class="t">Sionna RT path</span><span class="st idle">●<span class="w">Not Started</span></span>
+        <span class="d">FFT, <code>Paths.cfr</code> into S · H, IFFT; scene still to choose.</span></div>
+    </div>
+    <h3>Still open</h3>
+    <ul class="dim" style="margin:0;padding-left:20px">
+      <li>The second DU's ZMQ port pair.</li>
+      <li>Which side binds on the UE links.</li>
+      <li>The UE interface names (OAI's default is believed to be <code>oaitun_ue1</code>; not checked).</li>
+      <li>How the UE broker joins the multipath TCP client.</li>
+      <li>Whether the whiteboard groups the FFT inside Sionna RT (an arc over the FFT box), and where the IFFT sits.</li>
+      <li>What “SMA” next to the TX → RX sketch means on the whiteboard.</li>
+      <li>Which Sionna RT scene, given the earlier plain-pipe, no-scene decision.</li>
+    </ul>
+  </section>
+
+  <!-- 7. Sources -->
+  <section id="sources">
+    <div class="label">Sources</div>
+    <h2>Where the facts come from</h2>
+    <ul class="dim" style="margin:0;padding-left:20px">
+      <li><a href="https://tossi.org/docs/ran-integration/digital-twins/sionna-rt-ocudu-ran/" rel="noopener">TOSSI: Sionna RT with the OCUDU RAN</a>, the live-taps design and message format.</li>
+      <li><a href="https://tossi.org/docs/ran-integration/multi-ue-sim/" rel="noopener">TOSSI: Multi-UE simulation</a>, OAI UEs over ZMQ with per-UE namespaces.</li>
+      <li><a href="https://nvlabs.github.io/sionna/" rel="noopener">Sionna 2.2.0 documentation</a>, the <code>sionna.phy.channel</code> signatures.</li>
+      <li><a href="https://www.servethehome.com/?p=89754" rel="noopener">GB10 at Hot Chips 2025</a> and <a href="https://www.theregister.com/2025/08/27/nvidia_blackwell_gb10/" rel="noopener">The Register on GB10</a>, the SoC figures.</li>
+      <li>OCUDU source, <code>lib/radio/zmq/</code>, for the socket roles.</li>
+      <li><a href="https://nvlabs.github.io/sionna/rt/api/paths.html" rel="noopener">Sionna RT <code>Paths</code></a>: <code>cfr</code>, <code>cir</code>, <code>taps</code>.</li>
+      <li>Whiteboard photo, 2026-10-26: the subcarrier grid and the Sionna RT loop.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  // Theme buttons. A second click on the active theme clears the choice and
+  // hands it back to the OS.
+  (function () {
+    var root = document.documentElement, btns = document.querySelectorAll('.themes button');
+    function sync() {
+      var t = root.getAttribute('data-theme');
+      btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (root.getAttribute('data-theme') === b.dataset.t) {
+          root.removeAttribute('data-theme');
+          document.cookie = 'nomad_theme=; path=/; max-age=0; samesite=lax';
+        } else {
+          root.setAttribute('data-theme', b.dataset.t);
+          document.cookie = 'nomad_theme=' + b.dataset.t + '; path=/; max-age=31536000; samesite=lax';
+        }
+        sync();
+      });
+    });
+    sync();
+  })();
+</script>
+</body>
+</html>

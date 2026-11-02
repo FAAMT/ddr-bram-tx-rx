@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel Emulator Brief</title>
+<script>
+  // Same theme cookie as the dashboard; it styles the page around the slide.
+  // The slide itself is always white, on screen and in print.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+    // ?embed is the dashboard showing the slide in a frame: the slide alone, edge to edge
+    if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add('embed');
+  })();
+</script>
+<!-- Libre Franklin stands in for the template's Franklin Gothic where that font is not installed. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap">
+<style>
+:root {
+  --franklin: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'Libre Franklin', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --page: #080909; --page-line: #20231f; --page-text: #f2f2ee; --page-btn: #131513; --page-btn-line: #333733;
+
+  /* Slide tokens: docs/SLIDE_SCHEMA.md, verbatim. */
+  --purple: #4f0f87; --teal: #35746e; --rust: #b34a22;
+  --purple-tint: #f4f0f9; --teal-tint: #e8f2f1; --rust-tint: #fbf1eb; --rust-line: #ebcab6;
+  --title: #3f3f3f; --ink: #262626; --sub: #5f5f5f; --wire: #8c8c8c; --rule: #7f7f7f;
+  --card-line: #d8d2e2; --white: #ffffff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="contrast"]) {
+    --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6;
+  }
+}
+[data-theme="light"] { --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6; }
+[data-theme="contrast"] { --page: #000; --page-line: #8a8a8a; --page-text: #fff; --page-btn: #0a0a0a; --page-btn-line: #c0c0c0; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--page-text);
+       font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+.bar { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--page-line); flex-wrap: wrap; }
+.bar .name { font-weight: 700; }
+.bar .sp { flex: 1; }
+.btn { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--page-btn-line);
+       border-radius: 8px; background: var(--page-btn); color: var(--page-text); text-decoration: none; font: inherit;
+       font-size: 13px; cursor: pointer; }
+.btn.primary { border-color: var(--teal); }
+/* The file type and its button wrap as one, so the choice never lands a line away from the action */
+.dlg { display: inline-flex; gap: 6px; }
+
+/* A document, not a dashboard: the slide is one vector drawing on a fixed 3180x1789 landscape
+   canvas, scaled whole to the width it is given. It stays sharp at any zoom. */
+.deck { max-width: 1800px; margin: 0 auto; padding: 24px 24px 64px; }
+.page { display: block; width: 100%; height: auto; background: var(--white); border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+
+.embed body { background: transparent; }
+.embed .bar { display: none; }
+.embed .deck { max-width: none; padding: 0; }
+.embed .page { border-radius: 0; box-shadow: none; }
+
+/* Drawing styles. Nothing is set below 24 units. */
+.page text { font-family: var(--franklin); font-size: 26px; fill: var(--ink); }
+.page .h1 { font-size: 52px; fill: var(--title); }
+.page .pill-t { fill: var(--white); font-weight: 700; font-size: 28px; text-anchor: middle; }
+.page .zh { font-size: 28px; font-weight: 700; }
+.page .zh tspan.it { font-weight: 400; font-style: italic; fill: var(--sub); }
+.page .lane-t { font-size: 24px; font-weight: 700; fill: var(--purple); letter-spacing: .04em; }
+.page .c { text-anchor: middle; }
+.page .b { font-weight: 700; }
+.page .s { fill: var(--sub); font-size: 24px; }
+.page .hw { fill: var(--purple); font-size: 24px; }
+.page .sock { fill: var(--sub); font-size: 24px; font-weight: 700; }
+.page .code { font-family: var(--mono); font-size: 24px; fill: var(--teal); }
+.page .yn { fill: var(--sub); font-size: 24px; font-style: italic; }
+.page .lg { fill: var(--sub); font-size: 24px; }
+
+.page .zone-ctx { fill: var(--purple-tint); }
+.page .zone-focus { fill: var(--teal-tint); }
+.page .spark { fill: var(--white); stroke: var(--purple); stroke-width: 2; }
+.page .ueside { fill: var(--white); stroke: var(--card-line); stroke-width: 2; }
+.page .lane-cpu { fill: var(--purple-tint); }
+.page .lane-gpu { fill: var(--purple-tint); }
+.page .card { fill: var(--white); stroke: var(--card-line); stroke-width: 1.8; }
+.page .focal { fill: var(--white); stroke: var(--teal); stroke-width: 2.8; }
+.page .mem, .page .port { fill: var(--white); stroke: var(--purple); stroke-width: 1.8; }
+.page .strip { fill: var(--wire); }
+.page .dec { fill: var(--white); stroke: var(--teal); stroke-width: 2.2; }
+.page .num { fill: var(--teal); }
+.page .num-t { fill: var(--white); font-weight: 700; font-size: 24px; text-anchor: middle; }
+.page .disc { fill: var(--teal); }
+.page .ico-w { fill: none; stroke: var(--white); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+.page .data { stroke: var(--wire); stroke-width: 3; fill: none; }
+.page .bi { marker-start: url(#ah); marker-end: url(#ah); }
+.page .one { marker-end: url(#ah); }
+.page .ctl { stroke: var(--wire); stroke-width: 2.4; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
+.page .flow { stroke: var(--teal); stroke-width: 3; fill: none; marker-end: url(#at); }
+.page .bits { font-family: var(--mono); font-size: 28px; fill: var(--ink); }
+.page .gl text { font-family: var(--mono); font-size: 24px; fill: var(--ink); text-anchor: middle; }
+.page #ah path { fill: var(--wire); } .page #at path { fill: var(--teal); }
+
+@page { size: 3180px 1789px; margin: 0; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { background: var(--white); }
+  .bar { display: none; }
+  .deck { max-width: none; padding: 0; }
+  .page { width: 3180px; height: 1789px; border-radius: 0; box-shadow: none; }
+}
+@media screen and (max-width: 860px) {
+  .bar { padding: 10px 16px; }
+  .deck { padding: 16px 16px 48px; }
+}
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="name">Channel Emulator Brief</span>
+  <span class="sp"></span>
+  <a class="btn" href="/spark/">Dashboard</a>
+  <span class="dlg"><select class="btn" id="fmt" aria-label="File type"><option value="pdf">.pdf</option><option value="pptx">.pptx</option></select>
+  <button class="btn primary" id="dl" type="button">Download</button></span>
+</div>
+
+<main class="deck">
+<svg class="page" viewBox="0 0 3180 1789" role="img" aria-label="Sionna virtual channel emulator on the DGX Spark. Top left: the GB10 SoC. On the Arm CPU, two OCUDU DUs connect through ZMQ sockets to the IQ broker. Each IQ block passes through 128 GB of unified memory over NVLink-C2C to the channel emulator on the GPU, which also takes live taps from a publisher on port 5566. Outside the Spark, the IQ broker connects through ZMQ sockets to two OAI UEs in namespaces ue1 and ue2, which feed the UE broker for multipath TCP. Centre: the emulator loop as a flowchart, every 0.5 ms slot: pull 30,720 IQ samples with REQ; if new taps are waiting on SUB 5566, swap them in; otherwise build taps with tr38901.TDL and sample them with cir_to_time_channel; filter with ApplyTimeChannel; add AWGN and bias; return the same 30,720 samples with REP; repeat for the next slot. Top right: orthogonal frequency-division multiplexing (OFDM). Each subcarrier carries one QAM symbol, and an IFFT sums all N into one OFDM symbol. Every 2 bits pick one of 4 QAM points, S_k = I + jQ. The symbols fill a resource grid frequency-first: S_0 to S_N-1 down OFDM symbol 0, then S_N onward into symbol 1. Subcarriers k = 0 to N-1 are 30 kHz apart; the example uses N = 12, one resource block. A slot is OFDM symbols l = 0 to 13, 0.5 ms, and a 10 ms frame is 20 slots. After IFFT and cyclic prefix in the DU or UE, one slot is 30,720 samples on every IQ stream. Bottom: Sionna RT in the loop. The server sends IQ at t0 through a ZMQ socket into an FFT, giving S_k per subcarrier, which is multiplied by H_k from Sionna RT; an IFFT and cyclic prefix return to time t_n at the UE. Sionna RT computes H_k at the subcarrier frequencies with PathSolver and Paths.cfr. The FFT sits on the IQ path, before the channel is applied, outside Sionna RT, which never receives IQ samples.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect width="3180" height="1789" fill="#ffffff"/>
+
+  <!-- title band -->
+  <text class="h1" x="50" y="100">Sionna Virtual Channel Emulator · DGX Spark</text>
+  <rect x="2980" y="62" width="150" height="50" rx="25" fill="#35746e"/>
+  <text class="pill-t" x="3055" y="96">Design</text>
+  <line x1="50" y1="134" x2="3130" y2="134" stroke="#7f7f7f" stroke-width="1.8"/>
+
+  <!-- ===== system ===== -->
+  <rect class="zone-ctx" x="50" y="156" width="1140" height="814" rx="18"/>
+  <text class="zh" x="76" y="198"><tspan fill="#4f0f87">System</tspan></text>
+
+  <!-- the Spark -->
+  <rect class="spark" x="76" y="222" width="790" height="722" rx="14"/>
+  <text class="lane-t" x="100" y="260">DGX SPARK · GB10 SoC</text>
+
+  <rect class="lane-cpu" x="100" y="280" width="742" height="232" rx="12"/>
+  <text class="lane-t" x="122" y="316">ARM CPU · 20 CORES</text>
+
+  <rect class="card" x="126" y="380" width="214" height="120" rx="12"/>
+  <text class="c b" x="233" y="432">DU 1, 2</text><text class="c s" x="233" y="468">OCUDU</text>
+  <rect class="strip" x="340" y="380" width="14" height="120" rx="3"/>
+  <text class="c sock" x="347" y="366">REP · REQ</text>
+
+  <line class="data bi" x1="360" y1="440" x2="474" y2="440"/>
+
+  <rect class="strip" x="480" y="380" width="14" height="120" rx="3"/>
+  <text class="c sock" x="487" y="366" dx="10">REQ · REP</text>
+  <rect class="card" x="494" y="380" width="230" height="120" rx="12"/>
+  <text class="c b" x="609" y="432">IQ broker</text><text class="c s" x="609" y="468">ZMQ</text>
+  <rect class="strip" x="724" y="380" width="14" height="120" rx="3"/>
+  <text class="c sock" x="731" y="366" dx="22">REP · REQ</text>
+
+  <rect class="mem" x="100" y="540" width="742" height="54" rx="10"/>
+  <text class="c hw" x="330" y="576">NVLink-C2C · 128 GB unified</text>
+
+  <rect class="lane-gpu" x="100" y="622" width="742" height="206" rx="12"/>
+  <text class="lane-t" x="122" y="658">GPU</text>
+  <rect class="card" x="126" y="682" width="214" height="120" rx="12"/>
+  <text class="c b" x="233" y="734">Live taps</text><text class="c s" x="233" y="770">PUB :5566</text>
+  <line class="ctl" x1="340" y1="742" x2="410" y2="742"/>
+  <rect class="focal" x="416" y="682" width="400" height="120" rx="12"/>
+  <circle class="disc" cx="464" cy="742" r="28"/>
+  <path class="ico-w" d="M448 742 h6 l5 -12 l10 24 l5 -12 h6"/>
+  <text class="c b" x="636" y="734">Channel emulator</text><text class="c s" x="636" y="770">Sionna PHY on Blackwell</text>
+  <line class="data bi" x1="609" y1="506" x2="609" y2="676"/>
+
+  <rect class="port" x="362" y="858" width="220" height="48" rx="24"/><text class="c hw" x="472" y="890">10 GbE: core</text>
+
+  <!-- the UEs, outside the Spark -->
+  <rect class="ueside" x="894" y="222" width="270" height="722" rx="14"/>
+  <text class="lane-t" x="916" y="260">UE SIDE</text>
+
+  <line class="data bi" x1="744" y1="440" x2="914" y2="440"/>
+  <rect class="strip" x="920" y="380" width="14" height="120" rx="3"/>
+  <text class="c sock" x="1036" y="366">REQ · REP</text>
+  <rect class="card" x="934" y="380" width="206" height="120" rx="12"/>
+  <text class="c b" x="1037" y="432">OAI UE 1, 2</text><text class="c s" x="1037" y="468">ns ue1, ue2</text>
+
+  <line class="data bi" x1="1037" y1="506" x2="1037" y2="616"/>
+  <rect class="card" x="934" y="622" width="206" height="120" rx="12"/>
+  <text class="c b" x="1037" y="674">UE broker</text><text class="c s" x="1037" y="710">MPTCP</text>
+
+  <!-- ===== emulator loop ===== -->
+  <rect class="zone-focus" x="1230" y="156" width="860" height="814" rx="18"/>
+  <text class="zh" x="1256" y="198"><tspan fill="#35746e">Emulator loop</tspan><tspan class="it" dx="14">Every 0.5 ms slot</tspan></text>
+
+  <!-- 1 pull -->
+  <rect class="card" x="1370" y="226" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="260" r="22"/><text class="num-t" x="1412" y="268">1</text>
+  <text x="1448" y="269"><tspan class="b">Pull</tspan><tspan class="code" dx="12">REQ</tspan><tspan class="s" dx="12">30,720 IQ samples</tspan></text>
+  <line class="flow" x1="1610" y1="294" x2="1610" y2="322"/>
+
+  <!-- decision -->
+  <polygon class="dec" points="1440,378 1610,326 1780,378 1610,430"/>
+  <text class="c" x="1610" y="370">New taps on</text>
+  <text class="c code" x="1610" y="402">SUB :5566?</text>
+
+  <!-- yes: swap -->
+  <line class="flow" x1="1780" y1="378" x2="1834" y2="378"/>
+  <text class="yn" x="1788" y="364">yes</text>
+  <rect class="card" x="1840" y="344" width="220" height="68" rx="12"/>
+  <text class="c b" x="1950" y="387">Swap taps</text>
+  <path class="flow" d="M1950 412 V706 H1856"/>
+
+  <!-- no: build taps -->
+  <line class="flow" x1="1610" y1="430" x2="1610" y2="464"/>
+  <text class="yn" x="1624" y="452">no</text>
+  <rect class="card" x="1370" y="468" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="502" r="22"/><text class="num-t" x="1412" y="510">2</text>
+  <text x="1448" y="511"><tspan class="b">Taps</tspan><tspan class="code" dx="12">tr38901.TDL</tspan></text>
+  <line class="flow" x1="1610" y1="536" x2="1610" y2="566"/>
+  <rect class="card" x="1370" y="570" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="604" r="22"/><text class="num-t" x="1412" y="612">3</text>
+  <text x="1448" y="613"><tspan class="b">Sample</tspan><tspan class="code" dx="12">cir_to_time_channel</tspan></text>
+  <line class="flow" x1="1610" y1="638" x2="1610" y2="668"/>
+
+  <!-- filter, noise, return -->
+  <rect class="focal" x="1370" y="672" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="706" r="22"/><text class="num-t" x="1412" y="714">4</text>
+  <text x="1448" y="715"><tspan class="b">Filter</tspan><tspan class="code" dx="12">ApplyTimeChannel</tspan></text>
+  <line class="flow" x1="1610" y1="740" x2="1610" y2="770"/>
+  <rect class="card" x="1370" y="774" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="808" r="22"/><text class="num-t" x="1412" y="816">5</text>
+  <text x="1448" y="817"><tspan class="b">Noise</tspan><tspan class="code" dx="12">AWGN</tspan><tspan class="s" dx="12">+ bias</tspan></text>
+  <line class="flow" x1="1610" y1="842" x2="1610" y2="872"/>
+  <rect class="card" x="1370" y="876" width="480" height="68" rx="12"/>
+  <circle class="num" cx="1412" cy="910" r="22"/><text class="num-t" x="1412" y="918">6</text>
+  <text x="1448" y="919"><tspan class="b">Return</tspan><tspan class="code" dx="12">REP</tspan><tspan class="s" dx="12">same 30,720</tspan></text>
+
+  <!-- next slot -->
+  <path class="flow" d="M1370 910 H1330 V260 H1364"/>
+  <text class="yn" x="1316" y="572" text-anchor="end">next</text>
+  <text class="yn" x="1316" y="602" text-anchor="end">slot</text>
+
+  <!-- what it runs on -->
+  <text class="s" x="1880" y="842">2 cells × DL, UL</text>
+  <text class="s" x="1880" y="876">40 MHz ·</text>
+  <text class="s" x="1880" y="910">61.44 Msps</text>
+
+  <!-- ===== OFDM ===== -->
+  <rect class="zone-ctx" x="2130" y="156" width="1000" height="814" rx="18"/>
+  <text class="zh" x="2156" y="198" fill="#4f0f87">Orthogonal Frequency-Division Multiplexing (OFDM)</text>
+  <text class="yn" x="2156" y="234">Each subcarrier carries one QAM symbol; an IFFT sums all N into one OFDM symbol.</text>
+
+  <!-- bits to QAM points: every 2 bits pick 1 of 4 (the QPSK mapping of TS 38.211) -->
+  <text class="bits" x="2180" y="300">01 00 11 10 …</text>
+  <line class="data one" x1="2310" y1="314" x2="2310" y2="360"/>
+  <text class="b" x="2326" y="336" font-size="24">4-QAM</text>
+  <text class="s" x="2326" y="364">2 bits → 1 point</text>
+  <line x1="2190" y1="512" x2="2432" y2="512" stroke="#5f5f5f" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="2310" y1="636" x2="2310" y2="392" stroke="#5f5f5f" stroke-width="2" marker-end="url(#ah)"/>
+  <text class="b" x="2424" y="548">I</text>
+  <text class="b" x="2296" y="410" text-anchor="end">Q</text>
+  <circle cx="2252" cy="454" r="9" fill="#35746e"/><circle cx="2368" cy="454" r="9" fill="#35746e"/>
+  <circle cx="2252" cy="570" r="9" fill="#35746e"/><circle cx="2368" cy="570" r="9" fill="#35746e"/>
+  <g class="gl"><text x="2252" y="436">10</text><text x="2368" y="436">00</text><text x="2252" y="606">11</text><text x="2368" y="606">01</text></g>
+  <text class="c" x="2310" y="676">S<tspan baseline-shift="sub" font-size="20">k</tspan> = I + jQ</text>
+  <line class="data one" x1="2462" y1="498" x2="2590" y2="498"/>
+  <text class="c s" x="2524" y="482">S<tspan baseline-shift="sub" font-size="20">k</tspan></text>
+
+  <!-- resource grid: subcarrier k down the column, OFDM symbol l across -->
+  <line x1="2630" y1="720" x2="2630" y2="324" stroke="#5f5f5f" stroke-width="2" marker-end="url(#ah)"/>
+  <text class="b" x="2622" y="282" text-anchor="end">f</text>
+  <text class="s" x="2640" y="282">subcarrier k = 0 … N−1, 30 kHz apart</text>
+  <text class="s" x="2640" y="310">example: N = 12, one resource block (RB)</text>
+  <rect x="2660" y="324" width="400" height="384" fill="#ffffff" stroke="#d8d2e2" stroke-width="1.8"/>
+  <g stroke="#ece9f1" stroke-width="1.5">
+    <line x1="2660" y1="356" x2="3060" y2="356"/><line x1="2660" y1="388" x2="3060" y2="388"/><line x1="2660" y1="420" x2="3060" y2="420"/><line x1="2660" y1="452" x2="3060" y2="452"/><line x1="2660" y1="484" x2="3060" y2="484"/><line x1="2660" y1="516" x2="3060" y2="516"/><line x1="2660" y1="548" x2="3060" y2="548"/><line x1="2660" y1="580" x2="3060" y2="580"/><line x1="2660" y1="612" x2="3060" y2="612"/><line x1="2660" y1="644" x2="3060" y2="644"/><line x1="2660" y1="676" x2="3060" y2="676"/>
+    <line x1="2880" y1="324" x2="2880" y2="708"/><line x1="2990" y1="324" x2="2990" y2="708"/>
+  </g>
+  <line x1="2740" y1="324" x2="2740" y2="708" stroke="#d8d2e2" stroke-width="1.8"/>
+  <line x1="2820" y1="324" x2="2820" y2="708" stroke="#d8d2e2" stroke-width="1.8"/>
+  <rect x="2660" y="324" width="80" height="384" fill="none" stroke="#35746e" stroke-width="2.8"/>
+  <g class="gl">
+    <text x="2700" y="344">S<tspan dy="5" font-size="20">0</tspan></text><text x="2700" y="376">S<tspan dy="5" font-size="20">1</tspan></text><text x="2700" y="408">S<tspan dy="5" font-size="20">2</tspan></text>
+    <text x="2700" y="536">⋮</text><text x="2700" y="696">S<tspan dy="5" font-size="20">N−1</tspan></text>
+    <text x="2780" y="344">S<tspan dy="5" font-size="20">N</tspan></text><text x="2780" y="376">S<tspan dy="5" font-size="20">N+1</tspan></text><text x="2780" y="536">⋮</text>
+    <text x="2780" y="696">S<tspan dy="5" font-size="20">2N−1</tspan></text>
+  </g>
+  <text class="c s" x="2935" y="524">…</text>
+  <path d="M3068 326 h8 v380 h-8" fill="none" stroke="#4f0f87" stroke-width="2"/>
+  <text class="hw" x="3082" y="524">RB</text>
+  <line x1="2660" y1="736" x2="3084" y2="736" stroke="#5f5f5f" stroke-width="2" marker-end="url(#ah)"/>
+  <text class="s" x="2870" y="766" text-anchor="middle">t, OFDM symbol l = 0 … 13</text>
+  <text class="c" x="2630" y="802"><tspan class="b">slot</tspan> = 14 OFDM symbols = 0.5 ms <tspan class="s">· 10 ms frame = 20 slots</tspan></text>
+
+  <!-- the grid as it rides each IQ stream -->
+  <text class="s" x="2156" y="840">IFFT + CP in the DU (DL) or the UE (UL):</text>
+  <text x="2156" y="870"><tspan class="b">one slot = 30,720 samples</tspan><tspan class="s" dx="10">= 14 × 2048 + CP, on every stream</tspan></text>
+  <text class="b" x="2156" y="906">DL ×2</text><text class="b" x="2156" y="946">UL ×2</text>
+  <g stroke="#d8d2e2" stroke-width="1.5">
+    <rect x="2260" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="2320" y="884" width="60" height="28" fill="#ffffff"/><rect x="2380" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="2440" y="884" width="60" height="28" fill="#ffffff"/><rect x="2500" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="2560" y="884" width="60" height="28" fill="#ffffff"/><rect x="2620" y="884" width="60" height="28" fill="#e8f2f1"/>
+    <rect x="2680" y="884" width="60" height="28" fill="#ffffff"/><rect x="2740" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="2800" y="884" width="60" height="28" fill="#ffffff"/><rect x="2860" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="2920" y="884" width="60" height="28" fill="#ffffff"/><rect x="2980" y="884" width="60" height="28" fill="#e8f2f1"/><rect x="3040" y="884" width="60" height="28" fill="#ffffff"/>
+    <rect x="2260" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="2320" y="924" width="60" height="28" fill="#ffffff"/><rect x="2380" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="2440" y="924" width="60" height="28" fill="#ffffff"/><rect x="2500" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="2560" y="924" width="60" height="28" fill="#ffffff"/><rect x="2620" y="924" width="60" height="28" fill="#e8f2f1"/>
+    <rect x="2680" y="924" width="60" height="28" fill="#ffffff"/><rect x="2740" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="2800" y="924" width="60" height="28" fill="#ffffff"/><rect x="2860" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="2920" y="924" width="60" height="28" fill="#ffffff"/><rect x="2980" y="924" width="60" height="28" fill="#e8f2f1"/><rect x="3040" y="924" width="60" height="28" fill="#ffffff"/>
+  </g>
+  <rect x="2260" y="884" width="60" height="28" fill="none" stroke="#35746e" stroke-width="2.4"/>
+  <rect x="2260" y="924" width="60" height="28" fill="none" stroke="#35746e" stroke-width="2.4"/>
+
+  <!-- ===== Sionna RT ===== -->
+  <rect class="zone-focus" x="50" y="1000" width="3080" height="560" rx="18"/>
+  <text class="zh" x="76" y="1042" fill="#35746e">Sionna RT in the loop</text>
+
+  <rect class="card" x="90" y="1090" width="280" height="120" rx="12"/>
+  <text class="c b" x="230" y="1142">Server</text><text class="c s" x="230" y="1178">IQ at t₀</text>
+  <line class="data one" x1="370" y1="1150" x2="684" y2="1150"/>
+  <text class="c s" x="527" y="1132">IQ</text>
+  <rect class="strip" x="690" y="1090" width="14" height="120" rx="3"/>
+  <rect class="card" x="704" y="1090" width="360" height="120" rx="12"/>
+  <text class="c b" x="884" y="1136">FFT</text><text class="c code" x="884" y="1170">OFDMDemodulator</text><text class="c s" x="884" y="1200">CP removed</text>
+  <line class="data one" x1="1064" y1="1150" x2="1374" y2="1150"/>
+  <text class="c s" x="1219" y="1132">S<tspan baseline-shift="sub" font-size="20">k</tspan></text>
+  <ellipse cx="1560" cy="1150" rx="180" ry="58" fill="#ffffff" stroke="#35746e" stroke-width="2.8"/>
+  <text class="c b" x="1560" y="1160" font-size="30">H<tspan baseline-shift="sub" font-size="20">k</tspan> · S<tspan baseline-shift="sub" font-size="20">k</tspan></text>
+  <line class="data one" x1="1740" y1="1150" x2="2054" y2="1150"/>
+  <rect class="card" x="2060" y="1090" width="360" height="120" rx="12"/>
+  <text class="c b" x="2240" y="1136">IFFT + CP</text><text class="c code" x="2240" y="1170">OFDMModulator</text><text class="c s" x="2240" y="1200">CP added</text>
+  <line class="data one" x1="2420" y1="1150" x2="2730" y2="1150"/>
+  <text class="c s" x="2575" y="1132">t<tspan baseline-shift="sub" font-size="20">n</tspan></text>
+  <rect class="strip" x="2736" y="1090" width="14" height="120" rx="3"/>
+  <rect class="card" x="2750" y="1090" width="340" height="120" rx="12"/>
+  <text class="c b" x="2920" y="1142">UE</text><text class="c s" x="2920" y="1178">OAI</text>
+
+  <rect class="focal" x="1360" y="1300" width="400" height="190" rx="12"/>
+  <text class="c b" x="1560" y="1346">Sionna RT</text>
+  <text class="c code" x="1560" y="1386">PathSolver()(scene)</text>
+  <text class="c code" x="1560" y="1422">Paths.cfr(frequencies)</text>
+  <text class="c s" x="1560" y="1462">H<tspan baseline-shift="sub" font-size="20">k</tspan> at each subcarrier k</text>
+  <line class="flow" x1="1560" y1="1300" x2="1560" y2="1214"/>
+  <text class="s" x="1574" y="1268">H<tspan baseline-shift="sub" font-size="20">k</tspan></text>
+
+  <rect x="90" y="1300" width="1210" height="190" rx="12" fill="#ffffff" stroke="#35746e" stroke-width="2.8"/>
+  <text x="116" y="1346" font-size="28" class="b" fill="#35746e">FFT placement</text>
+  <text class="s" x="116" y="1390" font-size="26">On the IQ path, before the channel is applied:</text>
+  <text class="s" x="116" y="1430" font-size="26">IQ → FFT → H<tspan baseline-shift="sub" font-size="20">k</tspan> · S<tspan baseline-shift="sub" font-size="20">k</tspan> → IFFT.</text>
+
+  <rect x="1820" y="1300" width="1270" height="190" rx="12" fill="#ffffff" stroke="#35746e" stroke-width="2.8"/>
+  <text x="1846" y="1346" font-size="28" class="b" fill="#35746e">Outside Sionna RT</text>
+  <text class="s" x="1846" y="1390" font-size="26">Sionna RT never receives IQ samples.</text>
+  <text class="s" x="1846" y="1430" font-size="26">It returns H<tspan baseline-shift="sub" font-size="20">k</tspan> at the subcarrier frequencies (<tspan class="code">Paths.cfr</tspan>).</text>
+
+
+  <!-- ===== legend ===== -->
+  <g transform="translate(50 1608)">
+    <line class="data one" x1="0" y1="0" x2="44" y2="0"/><text class="lg" x="56" y="8">IQ or IP data</text>
+    <line class="ctl" x1="250" y1="0" x2="294" y2="0"/><text class="lg" x="306" y="8">Live taps</text>
+    <rect class="strip" x="460" y="-14" width="10" height="28" rx="2"/><text class="lg" x="482" y="8">ZMQ socket</text>
+    <line class="flow" x1="680" y1="0" x2="724" y2="0"/><text class="lg" x="736" y="8">Loop step</text>
+    <polygon class="dec" points="900,0 916,-14 932,0 916,14"/><text class="lg" x="944" y="8">Decision</text>
+    <rect x="1100" y="-14" width="28" height="28" rx="5" fill="#fff" stroke="#35746e" stroke-width="2.8"/><text class="lg" x="1140" y="8">New: our emulator</text>
+    <rect x="1400" y="-14" width="28" height="28" rx="5" fill="#fff" stroke="#4f0f87" stroke-width="2"/><text class="lg" x="1440" y="8">Spark hardware</text>
+    <rect x="1680" y="-14" width="28" height="28" rx="5" fill="#fff" stroke="#d8d2e2" stroke-width="2"/><text class="lg" x="1720" y="8">Software process</text>
+  </g>
+  <!-- y 1650 to 1789 stays empty: the banner goes here -->
+</svg>
+</main>
+
+<script src="/spark/slide-pptx.js"></script>
+<script>
+  // .pdf prints the page, which the print stylesheet sizes to the slide; .pptx rebuilds it as editable shapes.
+  document.getElementById('dl').addEventListener('click', function () {
+    var btn = this;
+    if (document.getElementById('fmt').value !== 'pptx') return window.print();
+    var name = location.pathname.split('/').pop() || 'brief';
+    btn.disabled = true; btn.textContent = 'Building…';
+    slidePptx.download(document.querySelector('svg.page'), name + '.pptx')
+      .catch(function (e) { alert('The .pptx could not be built: ' + e.message); })
+      .then(function () { btn.disabled = false; btn.textContent = 'Download'; });
+  });
+</script>
+</body>
+</html>

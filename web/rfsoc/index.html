@@ -193,6 +193,14 @@ select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
 .md p { color: var(--dim); }
 .md pre { background: var(--card-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
 
+/* Demo version switch: the two testbeds live on separate pages so they are never mixed. */
+.ver { max-width: 1120px; margin: 0 auto; padding: 8px 20px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ver .ver-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-right: 4px; }
+.ver a { border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; color: var(--dim); font-size: 12px; background: var(--card); }
+.ver a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.ver a[aria-current="page"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+.ver a b { color: var(--accent); margin-right: 4px; }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
@@ -220,7 +228,7 @@ select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
   .code { max-height: 70vh; }
 }
 @media (pointer: coarse) {
-  nav a, .themes button, select, .btn { min-height: 40px; display: inline-flex; align-items: center; }
+  nav a, .themes button, select, .btn, .ver a { min-height: 40px; display: inline-flex; align-items: center; }
   nav a { padding: 4px 10px; }
 }
 </style>
@@ -228,6 +236,11 @@ select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
 <body>
 
 <header>
+  <div class="ver" role="navigation" aria-label="Demo version">
+    <span class="ver-l">Demo version</span>
+    <a href="/rfsoc/" aria-current="page"><b>v1</b>RFSoC 4x2 · FPGA data path</a>
+    <a href="/spark/"><b>v2</b>DGX Spark · virtual channel emulator</a>
+  </div>
   <div class="bar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M9 23V9l5 7 4-5 5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>

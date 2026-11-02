@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sionna RT UAV Brief</title>
+<script>
+  // Same theme cookie as the dashboard; it styles the page around the slide.
+  // The slide itself is always white, on screen and in print.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+    // ?embed is the dashboard showing the slide in a frame: the slide alone, edge to edge
+    if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add('embed');
+  })();
+</script>
+<!-- Libre Franklin stands in for the template's Franklin Gothic where that font is not installed. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap">
+<style>
+:root {
+  --franklin: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'Libre Franklin', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --page: #080909; --page-line: #20231f; --page-text: #f2f2ee; --page-btn: #131513; --page-btn-line: #333733;
+
+  /* Slide tokens: docs/SLIDE_SCHEMA.md, verbatim. */
+  --purple: #4f0f87; --teal: #35746e; --rust: #b34a22;
+  --purple-tint: #f4f0f9; --teal-tint: #e8f2f1; --rust-tint: #fbf1eb; --rust-line: #ebcab6;
+  --title: #3f3f3f; --ink: #262626; --sub: #5f5f5f; --wire: #8c8c8c; --rule: #7f7f7f;
+  --card-line: #d8d2e2; --white: #ffffff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="contrast"]) {
+    --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6;
+  }
+}
+[data-theme="light"] { --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6; }
+[data-theme="contrast"] { --page: #000; --page-line: #8a8a8a; --page-text: #fff; --page-btn: #0a0a0a; --page-btn-line: #c0c0c0; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--page-text);
+       font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+.bar { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--page-line); flex-wrap: wrap; }
+.bar .name { font-weight: 700; }
+.bar .sp { flex: 1; }
+.btn { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--page-btn-line);
+       border-radius: 8px; background: var(--page-btn); color: var(--page-text); text-decoration: none; font: inherit;
+       font-size: 13px; cursor: pointer; }
+.btn.primary { border-color: var(--teal); }
+/* The file type and its button wrap as one, so the choice never lands a line away from the action */
+.dlg { display: inline-flex; gap: 6px; }
+
+/* A document, not a dashboard: the slide is one vector drawing on a fixed 3180x1789 landscape
+   canvas, scaled whole to the width it is given. It stays sharp at any zoom. */
+.deck { max-width: 1800px; margin: 0 auto; padding: 24px 24px 64px; }
+.page { display: block; width: 100%; height: auto; background: var(--white); border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+
+.embed body { background: transparent; }
+.embed .bar { display: none; }
+.embed .deck { max-width: none; padding: 0; }
+.embed .page { border-radius: 0; box-shadow: none; }
+
+/* Drawing styles. Every size and colour is carried on the element, from the slide it was taken from. */
+.page text { font-family: var(--franklin); white-space: pre; dominant-baseline: central; }
+
+@page { size: 3180px 1789px; margin: 0; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { background: var(--white); }
+  .bar { display: none; }
+  .deck { max-width: none; padding: 0; }
+  .page { width: 3180px; height: 1789px; border-radius: 0; box-shadow: none; }
+}
+@media screen and (max-width: 860px) {
+  .bar { padding: 10px 16px; }
+  .deck { padding: 16px 16px 48px; }
+}
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="name">Channel Emulator Brief · UAV scenario</span>
+  <span class="sp"></span>
+  <a class="btn" href="/spark/">Dashboard</a>
+  <span class="dlg"><select class="btn" id="fmt" aria-label="File type"><option value="pdf">.pdf</option><option value="pptx">.pptx</option></select>
+  <button class="btn primary" id="dl" type="button">Download</button></span>
+</div>
+
+<main class="deck">
+<svg class="page" viewBox="0 0 3180 1789" role="img" aria-label="Sionna RT channel emulator on NVIDIA DGX Spark, with a UAV scenario. System, top left: on the DGX Spark&#x27;s Arm CPU, OCUDU DU 1 and 2 send ZMQ IQ to the IQ broker, which connects over ZMQ to OAI UE 1 and 2 (ue1, ue2) on the UE side; the UEs feed a UE broker running MPTCP. 20 CPU cores, 128 GB unified memory over NVLink-C2C, 10 GbE to the core. On the GPU, live taps (PUB / SUB) feed the channel emulator, Sionna PHY on Blackwell, which takes IQ from the IQ broker. Emulator detail, below: the emulator loop for 2 cells, DL and UL, 40 MHz, 61.44 Msps. 1 Pull: REQ, 30,720 IQ samples. If there are new live taps, swap taps; otherwise 2 Taps: 3GPP TDL gains a and delays tau, and 3 Sample: cir_to_time_channel; these form channel generation and update. 4 Filter: ApplyTimeChannel. 5 Noise: AWGN plus bias. 6 Return: REP, the same 30,720 samples, then the next slot. Sionna RT, ray tracing outside the slot loop: Scene, load_scene; Path solver, PathSolver()(scene); Channel parameters, Paths.cir(): a, tau, feeding channel generation; scene-derived gains and delays replace the 3GPP TDL model. Right: the UAV scenario, two gNBs on rooftops and a UAV flying a trajectory through an urban street canyon.">
+  <defs>
+    <marker id="m9A9A9A-sm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="2.4" markerHeight="2.4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9A9A9A"/></marker>
+    <marker id="m327A76-sm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="2.4" markerHeight="2.4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#327A76"/></marker>
+    <marker id="m8C8C8C-med" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.4" markerHeight="3.4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8C8C8C"/></marker>
+  </defs>
+  <rect width="3180" height="1789" fill="#ffffff"/>
+  <rect x="50" y="156" width="1875.82" height="608" rx="18.55" fill="#F4F0F9"/>
+  <rect x="100" y="466" width="1280" height="55.5" rx="12.07" fill="#FFFFFF" stroke="#4F0F87" stroke-width="1.8"/>
+  <text x="50" y="81.36" text-anchor="start" font-size="52" fill="#3F3F3F">Sionna RT Channel Emulator on NVIDIA DGX Spark</text>
+  <line x1="50" y1="134" x2="3130" y2="134" fill="none" stroke="#7F7F7F" stroke-width="1.8"/>
+  <text x="100" y="209" text-anchor="start" font-size="48" fill="#4F0F87" font-weight="700">System</text>
+  <rect x="100" y="250" width="1300" height="470" rx="14" fill="#FFFFFF" stroke="#4F0F87" stroke-width="1.8"/>
+  <rect x="120" y="320" width="1260" height="130" rx="8" fill="#F4F0F8"/>
+  <rect x="120" y="540" width="1260" height="130" rx="8" fill="#F4F0F8"/>
+  <rect x="1450" y="250" width="450" height="470" rx="14" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.8"/>
+  <text x="125" y="284" text-anchor="start" font-size="28" fill="#4F0F87" font-weight="700">DGX SPARK / GB10 SoC</text>
+  <text x="145" y="376" text-anchor="start" font-size="28" fill="#4F0F87" font-weight="700">Arm CPU</text>
+  <text x="145" y="598" text-anchor="start" font-size="28" fill="#4F0F87" font-weight="700">GPU</text>
+  <text x="1475" y="284" text-anchor="start" font-size="28" fill="#4F0F87" font-weight="700">UE SIDE</text>
+  <rect x="350" y="340" width="300" height="90" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="500" y="368.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">DU 1, 2</text>
+  <text x="500" y="403.5" text-anchor="middle" font-size="26" fill="#606060">OCUDU</text>
+  <rect x="960" y="340" width="300" height="90" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1110" y="368.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">IQ broker</text>
+  <text x="1110" y="403.5" text-anchor="middle" font-size="26" fill="#606060">ZMQ</text>
+  <rect x="350" y="550" width="300" height="90" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="500" y="578.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">Live taps</text>
+  <text x="500" y="613.5" text-anchor="middle" font-size="26" fill="#606060">PUB / SUB</text>
+  <rect x="1490" y="340" width="370" height="90" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1675" y="368.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">OAI UE 1, 2</text>
+  <text x="1675" y="403.5" text-anchor="middle" font-size="26" fill="#606060">ue1, ue2</text>
+  <rect x="1490" y="550" width="370" height="90" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1675" y="578.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">UE broker</text>
+  <text x="1675" y="613.5" text-anchor="middle" font-size="26" fill="#606060">MPTCP</text>
+  <line x1="650" y1="385" x2="960" y2="385" fill="none" stroke="#9A9A9A" stroke-width="2.2" marker-start="url(#m9A9A9A-sm)" marker-end="url(#m9A9A9A-sm)"/>
+  <line x1="1260" y1="385" x2="1490" y2="385" fill="none" stroke="#9A9A9A" stroke-width="2.2" marker-start="url(#m9A9A9A-sm)" marker-end="url(#m9A9A9A-sm)"/>
+  <line x1="650" y1="595" x2="910" y2="597.5" fill="none" stroke="#327A76" stroke-width="2.2" stroke-dasharray="8.8 6.6" marker-end="url(#m327A76-sm)"/>
+  <line x1="1675" y1="430" x2="1675" y2="550" fill="none" stroke="#9A9A9A" stroke-width="2.2" marker-start="url(#m9A9A9A-sm)" marker-end="url(#m9A9A9A-sm)"/>
+  <text x="802.5" y="354" text-anchor="middle" font-size="25" fill="#606060">ZMQ IQ</text>
+  <text x="145" y="492" text-anchor="start" font-size="24" fill="#4F0F87">20 CPU cores     128 GB unified memory / NVLink-C2C</text>
+  <text x="1370.22" y="493.04" text-anchor="end" font-size="24" fill="#606060">10 GbE to core</text>
+  <line x1="915" y1="651" x2="100" y2="830" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <text x="535.03" y="796" text-anchor="start" font-size="37.33" fill="#606060">Emulator detail</text>
+  <rect x="100" y="830" width="1080" height="750" rx="14" fill="#EDF5F4"/>
+  <rect x="1220" y="830" width="705.82" height="750" rx="14.53" fill="#F4F0F8"/>
+  <text x="125" y="867" text-anchor="start" font-size="29" fill="#327A76" font-weight="700">Emulator loop</text>
+  <text x="125" y="911.5" text-anchor="start" font-size="24" fill="#606060">2 cells, DL / UL     40 MHz     61.44 Msps</text>
+  <text x="1245" y="867" text-anchor="start" font-size="29" fill="#4F0F87" font-weight="700">Sionna RT</text>
+  <text x="1245" y="911.5" text-anchor="start" font-size="24" fill="#606060">Ray tracing outside the slot loop</text>
+  <rect x="275" y="1140" width="850" height="180" rx="10" fill="#F5FAF9" stroke="#327A76" stroke-width="1.3"/>
+  <rect x="300" y="960" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <rect x="312" y="974" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="992" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">1</text>
+  <text x="365" y="992" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Pull<tspan font-weight="400">   REQ, 30,720 IQ samples</tspan></text>
+  <polygon points="590,1040 770,1083 590,1126 410,1083" fill="#FFFFFF" stroke="#327A76" stroke-width="2"/>
+  <text x="590" y="1082" text-anchor="middle" font-size="27" fill="#262626">New live taps?</text>
+  <rect x="300" y="1150" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <rect x="312" y="1164" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="1182" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">2</text>
+  <text x="365" y="1182" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Taps<tspan font-weight="400">   3GPP TDL: gains a, delays τ</tspan></text>
+  <rect x="300" y="1230" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <rect x="312" y="1244" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="1262" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">3</text>
+  <text x="365" y="1262" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Sample<tspan font-weight="400">   cir_to_time_channel</tspan></text>
+  <rect x="300" y="1330" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#327A76" stroke-width="2.5"/>
+  <rect x="312" y="1344" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="1362" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">4</text>
+  <text x="365" y="1362" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Filter<tspan font-weight="400">   ApplyTimeChannel</tspan></text>
+  <rect x="300" y="1410" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <rect x="312" y="1424" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="1442" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">5</text>
+  <text x="365" y="1442" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Noise<tspan font-weight="400">   AWGN + bias</tspan></text>
+  <rect x="300" y="1490" width="580" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <rect x="312" y="1504" width="36" height="36" rx="18" fill="#327A76"/>
+  <text x="330" y="1522" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">6</text>
+  <text x="365" y="1522" text-anchor="start" font-size="26" fill="#262626" font-weight="700">Return<tspan font-weight="400">   REP, same 30,720 samples</tspan></text>
+  <rect x="920" y="1150" width="180" height="64" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.5"/>
+  <text x="1010" y="1182" text-anchor="middle" font-size="26" fill="#262626" font-weight="700">Swap taps</text>
+  <text x="1005" y="1245.2" text-anchor="middle" font-size="24" fill="#606060">Channel<tspan x="1005" dy="28.8">generation</tspan><tspan x="1005" dy="28.8">and update</tspan></text>
+  <line x1="590" y1="1024" x2="590" y2="1040" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="590" y1="1126" x2="590" y2="1150" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <text x="615" y="1127.5" text-anchor="start" font-size="24" fill="#606060">no</text>
+  <line x1="770" y1="1083" x2="1010" y2="1083" fill="none" stroke="#327A76" stroke-width="2.2"/>
+  <line x1="1010" y1="1083" x2="1010" y2="1150" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <text x="790" y="1059.5" text-anchor="start" font-size="24" fill="#606060">yes</text>
+  <line x1="590" y1="1214" x2="590" y2="1230" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="590" y1="1294" x2="590" y2="1330" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="590" y1="1394" x2="590" y2="1410" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="590" y1="1474" x2="590" y2="1490" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="1100" y1="1182" x2="1145" y2="1182" fill="none" stroke="#327A76" stroke-width="2.2"/>
+  <line x1="1145" y1="1182" x2="1145" y2="1362" fill="none" stroke="#327A76" stroke-width="2.2"/>
+  <line x1="880" y1="1362" x2="1145" y2="1362" fill="none" stroke="#327A76" stroke-width="2.2" marker-start="url(#m327A76-sm)"/>
+  <line x1="240" y1="1522" x2="300" y2="1522" fill="none" stroke="#327A76" stroke-width="2.2"/>
+  <line x1="240" y1="992" x2="240" y2="1522" fill="none" stroke="#327A76" stroke-width="2.2"/>
+  <line x1="240" y1="992" x2="300" y2="992" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <text x="177.5" y="1232.5" text-anchor="middle" font-size="25" fill="#606060">Next<tspan x="177.5" dy="30">slot</tspan></text>
+  <rect x="1280" y="960" width="560" height="100" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1560" y="988.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">Scene</text>
+  <text x="1560" y="1023.5" text-anchor="middle" font-size="26" fill="#606060">load_scene(…)</text>
+  <rect x="1280" y="1095" width="560" height="100" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1560" y="1123.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">Path solver</text>
+  <text x="1560" y="1158.5" text-anchor="middle" font-size="26" fill="#606060">PathSolver()(scene)</text>
+  <rect x="1280" y="1230" width="560" height="100" rx="9" fill="#FFFFFF" stroke="#D9D0E6" stroke-width="1.6"/>
+  <text x="1560" y="1258.5" text-anchor="middle" font-size="30" fill="#262626" font-weight="700">Channel parameters</text>
+  <text x="1560" y="1293.5" text-anchor="middle" font-size="26" fill="#606060">Paths.cir(): a, τ</text>
+  <line x1="1560" y1="1060" x2="1560" y2="1095" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="1560" y1="1195" x2="1560" y2="1230" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <line x1="1125" y1="1280" x2="1280" y2="1280" fill="none" stroke="#327A76" stroke-width="2.2" stroke-dasharray="8.8 6.6" marker-start="url(#m327A76-sm)"/>
+  <text x="1560" y="1436.9" text-anchor="middle" font-size="26" fill="#606060">Scene-derived gains and delays<tspan x="1560" dy="31.2">replace the 3GPP TDL model</tspan></text>
+  <line x1="100" y1="1640" x2="165" y2="1640" fill="none" stroke="#9A9A9A" stroke-width="2.2" marker-end="url(#m9A9A9A-sm)"/>
+  <text x="182" y="1640" text-anchor="start" font-size="23" fill="#606060">IQ data</text>
+  <line x1="520" y1="1640" x2="585" y2="1640" fill="none" stroke="#327A76" stroke-width="2.2" stroke-dasharray="8.8 6.6" marker-end="url(#m327A76-sm)"/>
+  <text x="602" y="1640" text-anchor="start" font-size="23" fill="#606060">Tap updates</text>
+  <line x1="1000" y1="1640" x2="1065" y2="1640" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <text x="1082" y="1640" text-anchor="start" font-size="23" fill="#606060">Processing flow</text>
+  <text x="2030" y="209" text-anchor="start" font-size="48" fill="#4F0F87" font-weight="700">UAV scenario</text>
+  <image href="/spark/uav-scenario.jpg" x="2030" y="382.13" width="980" height="1155.75" preserveAspectRatio="none"><title>UAV scenario: two gNBs on rooftops and a UAV trajectory through an urban street canyon</title></image>
+  <line x1="1310.27" y1="654.97" x2="1170.52" y2="833.97" fill="none" stroke="#327A76" stroke-width="2.2" marker-end="url(#m327A76-sm)"/>
+  <rect x="912.21" y="545.84" width="400" height="120" rx="12" fill="#FFFFFF" stroke="#35746E" stroke-width="2.8"/>
+  <ellipse cx="963.03" cy="607.77" rx="28" ry="28" fill="#35746E"/>
+  <text x="1132.21" y="588.2" text-anchor="middle" font-size="26" fill="#262626" font-weight="700">Channel emulator</text>
+  <text x="1132.21" y="625.48" text-anchor="middle" font-size="24" fill="#5F5F5F">Sionna PHY on Blackwell</text>
+  <path d="M946.21 607.84 L952.21 607.84 L957.21 595.84 L967.21 619.84 L972.21 607.84 L978.21 607.84" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="635" y="340" width="15" height="90" rx="3.21" fill="#8C8C8C"/>
+  <text x="640.48" y="330.05" text-anchor="middle" font-size="21.33" fill="#5F5F5F" font-weight="700">ZMQ</text>
+  <text x="960.48" y="327.95" text-anchor="middle" font-size="21.33" fill="#5F5F5F" font-weight="700">ZMQ</text>
+  <text x="1250.22" y="329.2" text-anchor="middle" font-size="21.33" fill="#5F5F5F" font-weight="700">ZMQ</text>
+  <rect x="959.74" y="339.42" width="15" height="90" rx="3.21" fill="#8C8C8C"/>
+  <rect x="1245.13" y="340" width="15" height="90" rx="3.21" fill="#8C8C8C"/>
+  <text x="1495.57" y="328.79" text-anchor="middle" font-size="21.33" fill="#5F5F5F" font-weight="700">ZMQ</text>
+  <rect x="1490.48" y="339.59" width="15" height="90" rx="3.21" fill="#8C8C8C"/>
+  <rect x="1282" y="1235" width="36" height="36" rx="18" fill="#327A76"/>
+  <rect x="125" y="466" width="1245.22" height="46" rx="10" fill="none" stroke="#4F0F87" stroke-width="1.8"/>
+  <text x="1299.39" y="1253" text-anchor="middle" font-size="24" fill="#FFFFFF" font-weight="700">2</text>
+  <line x1="1110" y1="430" x2="1110" y2="546" fill="none" stroke="#8C8C8C" stroke-width="3" marker-start="url(#m8C8C8C-med)" marker-end="url(#m8C8C8C-med)"/>
+</svg>
+</main>
+
+<script src="/spark/slide-pptx.js"></script>
+<script>
+  // .pdf prints the page, which the print stylesheet sizes to the slide; .pptx rebuilds it as editable shapes.
+  document.getElementById('dl').addEventListener('click', function () {
+    var btn = this;
+    if (document.getElementById('fmt').value !== 'pptx') return window.print();
+    var name = location.pathname.split('/').pop() || 'brief';
+    btn.disabled = true; btn.textContent = 'Building…';
+    slidePptx.download(document.querySelector('svg.page'), name + '.pptx')
+      .catch(function (e) { alert('The .pptx could not be built: ' + e.message); })
+      .then(function () { btn.disabled = false; btn.textContent = 'Download'; });
+  });
+</script>
+</body>
+</html>

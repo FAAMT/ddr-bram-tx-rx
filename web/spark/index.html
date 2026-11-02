@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ddr-bram-tx-rx · v2 DGX Spark</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%20width%3D%2732%27%20height%3D%2732%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27nm%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23ffd23d%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%278%27%20fill%3D%27url%28%23nm%29%27%2F%3E%3Cpath%20d%3D%27M9%2023V9l5%207%204-5%205%2012%27%20fill%3D%27none%27%20stroke%3D%27%23080909%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E">
+<script>
+  // Theme before first paint. A cookie, not localStorage: it ignores the port,
+  // so one choice carries across every page on the tailnet host.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+  })();
+</script>
+<style>
+:root {
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'JetBrains Mono', Consolas, monospace;
+
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12);
+  --header-bg: rgba(8, 9, 9, .55);
+
+  /* The tile identifies the tool and is the register's colour; JS overwrites it from there. */
+  --tile: #ffd23d; --tile-glow: rgba(255, 210, 61, .35);
+
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+    --line: #d5d9d3; --line-2: #b7bdb6;
+    --text: #121412; --dim: #3f4741; --muted: #586259;
+    --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+    --accent-tint: rgba(10, 111, 148, .08);
+    --header-bg: rgba(246, 247, 243, .75);
+    --tile-glow: rgba(122, 96, 0, .18);
+    --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+    --line: #8a8a8a; --line-2: #c0c0c0;
+    --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+    --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+    --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+    --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+  }
+}
+[data-theme="dark"] {
+  --bg: #080909; --card: #0e0f0e; --card-2: #131513; --card-3: #1a1d1a;
+  --line: #20231f; --line-2: #333733;
+  --text: #f2f2ee; --dim: #adb5ae; --muted: #7f8b81;
+  --accent: #38d0ff; --accent-glow: rgba(56, 208, 255, .35); --accent-2: #ffd23d;
+  --accent-tint: rgba(56, 208, 255, .12); --header-bg: rgba(8, 9, 9, .55);
+  --tile-glow: rgba(255, 210, 61, .35);
+  --idle: #5c665e; --working: #ffa028; --done: #00ffa3; --error: #ff2975;
+}
+[data-theme="light"] {
+  --bg: #f6f7f3; --card: #ffffff; --card-2: #eef0ec; --card-3: #e5e8e3;
+  --line: #d5d9d3; --line-2: #b7bdb6;
+  --text: #121412; --dim: #3f4741; --muted: #586259;
+  --accent: #0a6f94; --accent-glow: rgba(10, 111, 148, .12); --accent-2: #7a6000;
+  --accent-tint: rgba(10, 111, 148, .08); --header-bg: rgba(246, 247, 243, .75);
+  --tile-glow: rgba(122, 96, 0, .18);
+  --idle: #5c665e; --working: #9a5600; --done: #007a4b; --error: #c8124f;
+}
+[data-theme="contrast"] {
+  --bg: #000000; --card: #000000; --card-2: #0a0a0a; --card-3: #141414;
+  --line: #8a8a8a; --line-2: #c0c0c0;
+  --text: #ffffff; --dim: #e6e6e6; --muted: #cfcfcf;
+  --accent: #38d0ff; --accent-glow: transparent; --accent-2: #ffd23d;
+  --accent-tint: transparent; --header-bg: #000000; --tile-glow: transparent;
+  --idle: #b0bab2; --working: #ffb347; --done: #00ffa3; --error: #ff5c95;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+}
+::selection { background: var(--accent); color: var(--bg); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: .95em; color: var(--text); background: var(--card-2);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--header-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.bar { max-width: 1120px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px;
+         color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
+.brand-mark {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex: none;
+  color: #080909; background: var(--tile); box-shadow: 0 4px 18px var(--tile-glow);
+}
+nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+nav a { white-space: nowrap; color: var(--dim); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+nav a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.themes { display: flex; gap: 4px; }
+.themes button {
+  font-family: var(--mono); font-size: 11px; color: var(--dim); background: var(--card);
+  border: 1px solid var(--line); border-radius: 4px; padding: 3px 7px; cursor: pointer;
+}
+.themes button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+
+main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+section { margin-top: 44px; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 18px 0 8px; }
+.label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+.deck { color: var(--dim); margin: 0 0 16px; max-width: 78ch; }
+p { margin: 0 0 10px; }
+.dim { color: var(--dim); }
+.num { font-variant-numeric: tabular-nums; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.grid { display: grid; gap: 12px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.stat .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .v.small { font-size: 15px; }
+.stat .s { color: var(--dim); font-size: 12px; }
+.prov { color: var(--dim); font-size: 12px; margin: 8px 0 0; }
+
+/* status: glyph + word, never colour alone */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin: 8px 0 12px; }
+.st { white-space: nowrap; font-weight: 700; }
+.st.idle { color: var(--idle); } .st.working { color: var(--working); }
+.st.done { color: var(--done); } .st.error { color: var(--error); }
+.st .w { color: var(--text); font-weight: 400; margin-left: 4px; }
+
+.rows { display: grid; gap: 8px; }
+.row { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--idle);
+       border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 10px; }
+.row.done { border-left-color: var(--done); } .row.working { border-left-color: var(--working); }
+.row.error { border-left-color: var(--error); }
+.row .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .t { font-weight: 700; }
+.row .d { grid-column: 2 / 4; color: var(--dim); }
+.row .why { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
+.tag { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+       border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th { text-align: left; font-weight: 400; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+          color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: 0; }
+
+/* Report excerpts and code keep their columns and pan inside their own box. */
+.pan { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+pre.rpt { margin: 0; padding: 12px 14px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+          color: var(--dim); white-space: pre; width: max-content; min-width: 100%; }
+
+.picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+select, .btn {
+  font-family: var(--mono); font-size: 12.5px; color: var(--text); background: var(--card-2);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 10px;
+}
+select { max-width: 100%; min-width: 0; flex: 1 1 320px; }
+.btn { cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.btn:hover { background: var(--card-3); text-decoration: none; }
+.fmeta { color: var(--dim); font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.code { max-height: 72vh; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.code ol { margin: 0; padding: 10px 0; list-style: none; counter-reset: ln; width: max-content; min-width: 100%; }
+.code li { counter-increment: ln; white-space: pre; font-size: 12px; line-height: 1.55; padding-right: 16px; }
+.code li::before { content: counter(ln); display: inline-block; width: 5ch; margin-right: 14px; padding-right: 8px;
+                   text-align: right; color: var(--muted); border-right: 1px solid var(--line);
+                   font-variant-numeric: tabular-nums; user-select: none; }
+.code li.c { color: var(--muted); }
+.empty { color: var(--dim); }
+
+.md h1, .md h2 { font-size: 15px; margin: 18px 0 6px; }
+.md h1:first-child { margin-top: 0; }
+.md ul { margin: 0 0 10px; padding-left: 20px; }
+.md li { margin-bottom: 4px; color: var(--dim); }
+.md p { color: var(--dim); }
+.md pre { background: var(--card-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+/* Demo version switch: the two testbeds live on separate pages so they are never mixed. */
+.ver { max-width: 1120px; margin: 0 auto; padding: 8px 20px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ver .ver-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-right: 4px; }
+.ver a { border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; color: var(--dim); font-size: 12px; background: var(--card); }
+.ver a:hover { color: var(--text); background: var(--card-3); text-decoration: none; }
+.ver a[aria-current="page"] { color: var(--text); border-color: var(--accent); background: var(--accent-tint); }
+.ver a b { color: var(--accent); margin-right: 4px; }
+
+/* Figures drawn in the page's own tokens, so they follow the theme. */
+.fig-pan { padding: 12px; }
+.fig { display: block; width: 100%; min-width: 760px; height: auto; }
+.fig text { font-family: var(--mono); font-size: 13px; fill: var(--text); }
+.fig .s { fill: var(--dim); } .fig .b { font-weight: 700; } .fig .c { text-anchor: middle; } .fig .e { text-anchor: end; }
+.fig .m { fill: var(--accent); }
+.fig .ln, .fig .ax { stroke: var(--line-2); stroke-width: 1.6; fill: none; }
+.fig .lnA { stroke: var(--accent); stroke-width: 2; fill: none; }
+.fig marker path { fill: var(--line-2); }
+.fig .pt { fill: var(--accent); }
+.fig .rgd { fill: var(--card); stroke: var(--line-2); stroke-width: 1.4; }
+.fig .gl2 line { stroke: var(--line); stroke-width: 1; }
+.fig .col { fill: none; stroke: var(--accent); stroke-width: 2; }
+.fig .sk text { text-anchor: middle; font-size: 12.5px; }
+.fig .br { fill: none; stroke: var(--accent-2); stroke-width: 1.6; }
+.fig .bar rect { fill: var(--card-2); stroke: var(--line-2); stroke-width: 1; }
+.fig .bar rect:nth-child(odd) { fill: var(--accent-tint); }
+.fig .box { fill: var(--card); stroke: var(--line-2); stroke-width: 1.4; }
+.fig .foc { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.fig .prod { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
+.fig .sock { fill: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* 860px: one breakpoint, appended last */
+@media (max-width: 860px) {
+  body { min-height: 100vh; min-height: 100dvh; }
+  .bar { flex-wrap: wrap; padding: 10px 16px; }
+  main { padding: 20px 16px 64px; }
+  nav { margin-left: 0; order: 3; width: 100%; }
+  .themes { margin-left: auto; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .row { grid-template-columns: 24px 1fr; }
+  .row .st { grid-column: 2; }
+  .row .d, .row .why { grid-column: 2; }
+  /* Tables stack into one card per row. */
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .tbl tr:last-child { border-bottom: 0; }
+  .tbl td { border: 0; padding: 2px 8px; overflow-wrap: anywhere; }
+  .tbl td[data-k]::before { content: attr(data-k); display: block; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tbl td:first-child { font-weight: 700; }
+  .code { max-height: 70vh; }
+}
+@media (pointer: coarse) {
+  nav a, .themes button, select, .btn, .ver a { min-height: 40px; display: inline-flex; align-items: center; }
+  nav a { padding: 4px 10px; }
+}
+
+/* The dashboard leads with the slide, shown by its own page in a frame so it keeps the slide's fonts.
+   On a narrow screen the frame keeps a legible width and the box pans; the frame takes no pointer events,
+   so a swipe pans the box instead of being swallowed by the slide. */
+.slide-pan { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #ffffff; }
+.slide-pan iframe { display: block; width: 100%; min-width: 980px; aspect-ratio: 3180 / 1789; border: 0;
+                    pointer-events: none; }
+.under { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 10px; color: var(--dim); font-size: 13px; }
+.about { font-size: 16px; line-height: 1.6; max-width: 78ch; margin: 0; }
+.dl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dl select { flex: 0 0 auto; }
+.file { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.file-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+          background: var(--card-2); font-family: var(--mono); font-size: 13px; }
+.file-h .sp { flex: 1; }
+pre.md { margin: 0; padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+         white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+/* One block per line, so an empty line keeps its height and a list item can hang under its marker. */
+pre.md .l { display: block; min-height: 1.55em; }
+/* Tables and code: columns kept, panned sideways. */
+pre.md .w { display: block; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+pre.md .h { color: var(--accent); font-weight: 700; }
+pre.md .f { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ver" role="navigation" aria-label="Demo version">
+    <span class="ver-l">Demo version</span>
+    <a href="/rfsoc/"><b>v1</b>RFSoC 4x2 · FPGA data path</a>
+    <a href="/spark/" aria-current="page"><b>v2</b>DGX Spark · virtual channel emulator</a>
+  </div>
+  <div class="bar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M9 23V9l5 7 4-5 5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>ddr-bram-tx-rx · v2</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#diagram">Diagram</a>
+      <a href="#about">Description</a>
+      <a href="#files">Downloads</a>
+      <a href="#plan">plan.md</a>
+      <a href="/spark/notes">Working notes</a>
+    </nav>
+    <div class="themes" role="group" aria-label="Theme">
+      <button data-t="dark">Dark</button><button data-t="light">Light</button><button data-t="contrast">Contrast</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h1>Sionna RT channel emulator on NVIDIA DGX Spark</h1>
+
+  <!-- 1. The diagram: the source of truth -->
+  <section id="diagram" style="margin-top:16px">
+    <div class="slide-pan">
+      <iframe id="slide" src="/spark/brief-uav?embed" title="The slide: Sionna RT channel emulator on NVIDIA DGX Spark, with the UAV scenario" tabindex="-1"></iframe>
+    </div>
+    <div class="under">
+      <span>The diagram is the source of truth. <code>plan.md</code> below is how it gets built; where they disagree, the diagram wins.</span>
+      <a class="btn" href="/spark/brief-uav">Open the slide on its own</a>
+    </div>
+  </section>
+
+  <!-- 2. What it shows -->
+  <section id="about">
+    <div class="label">Description</div>
+    <p class="about" id="about-text">One NVIDIA DGX Spark stands in for the radio channel between two 5G cells and two UEs. Two OCUDU DUs and two OAI UEs exchange IQ samples over ZMQ instead of over the air, and an IQ broker between them hands every block to a channel emulator running Sionna PHY on the Spark&rsquo;s Blackwell GPU. For each 0.5&nbsp;ms slot (30,720 samples at 61.44&nbsp;Msps, 40&nbsp;MHz, both cells, downlink and uplink) the emulator pulls the block, takes the current channel taps, filters the samples with them, adds noise and returns a block of the same length. The taps come from the 3GPP TDL model by default, and Sionna RT replaces them: outside the slot loop it ray-traces a 3D scene, here a UAV flying through an urban street canyon between two gNBs, and sends the path gains and delays as live taps, so the emulated channel follows the UAV. On the UE side, a UE broker joins the two UEs&rsquo; links with MPTCP.</p>
+  </section>
+
+  <!-- 3. The slide as files -->
+  <section id="files">
+    <div class="label">Downloads</div>
+    <div class="dl">
+      <select class="btn" id="fmt" aria-label="File type"><option value="pdf">.pdf</option><option value="pptx">.pptx</option></select>
+      <button class="btn" id="dl" type="button">Download the slide</button>
+      <span class="dim" style="font-size:13px">Earlier layouts: <a href="/spark/brief">original</a> · <a href="/spark/brief-ruibin">Ruibin's</a></span>
+    </div>
+  </section>
+
+  <!-- 4. The build, as the one file it is written in -->
+  <section id="plan">
+    <div class="label">Implementation</div>
+    <h2>The build instructions for the Spark</h2>
+    <p class="deck">One file holds the whole build, step by step, each step with a check that says it worked.
+      It is written to be followed on the Spark itself.</p>
+    <div class="file">
+      <div class="file-h"><span>plan.md</span><span class="sp"></span>
+        <button class="btn" id="copy" type="button">Copy</button><a class="btn" href="/spark/plan.md">Raw</a></div>
+      <pre class="md" id="plan-src">Loading plan.md…</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Theme buttons. A second click on the active theme clears the choice and
+  // hands it back to the OS.
+  (function () {
+    var root = document.documentElement, btns = document.querySelectorAll('.themes button');
+    function sync() {
+      var t = root.getAttribute('data-theme');
+      btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (root.getAttribute('data-theme') === b.dataset.t) {
+          root.removeAttribute('data-theme');
+          document.cookie = 'nomad_theme=; path=/; max-age=0; samesite=lax';
+        } else {
+          root.setAttribute('data-theme', b.dataset.t);
+          document.cookie = 'nomad_theme=' + b.dataset.t + '; path=/; max-age=31536000; samesite=lax';
+        }
+        sync();
+      });
+    });
+    sync();
+  })();
+
+  // Downloads come from the slide's own page in the frame: .pdf is that page printed, so its print
+  // stylesheet sizes the sheet to the slide; .pptx is its export.
+  document.getElementById('dl').addEventListener('click', function () {
+    var btn = this, win = document.getElementById('slide').contentWindow;
+    if (document.getElementById('fmt').value !== 'pptx') return win.print();
+    btn.disabled = true; btn.textContent = 'Building…';
+    win.slidePptx.download(win.document.querySelector('svg.page'), 'brief-uav.pptx')
+      .catch(function (e) { alert('The .pptx could not be built: ' + e.message); })
+      .then(function () { btn.disabled = false; btn.textContent = 'Download the slide'; });
+  });
+
+  // plan.md is shown as the file it is, markdown and all. Prose lines that the source hard-wraps are rejoined so
+  // they reflow at any width, and a wrapped list item hangs under its marker. Tables and code keep their columns
+  // and pan sideways instead, because wrapping them is what made them unreadable on a phone. Copy and Raw give
+  // the file byte for byte.
+  (function () {
+    var pre = document.getElementById('plan-src'), text = '';
+    var TABLE = /^\s*\|/, FENCE = /^\s*```/, HEAD = /^#{1,6} /, ITEM = /^(\s*)([-*] |\d+\. )/, CODE = /^ {4}/;
+    function add(cls, s, hang) {
+      var el = document.createElement('span');
+      el.className = cls; el.textContent = s;
+      if (hang) { el.style.paddingLeft = hang + 'ch'; el.style.textIndent = -hang + 'ch'; }
+      return pre.appendChild(el);
+    }
+    function render(t) {
+      var L = t.split('\n'), i = 0, run;
+      pre.textContent = '';
+      while (i < L.length) {
+        var line = L[i];
+        if (FENCE.test(line)) {
+          add('l f', line); run = [];
+          for (i++; i < L.length && !FENCE.test(L[i]); i++) run.push(L[i]);
+          if (run.length) add('w', run.join('\n'));
+          if (i < L.length) add('l f', L[i]);
+          i++;
+        } else if (TABLE.test(line)) {
+          for (run = []; i < L.length && TABLE.test(L[i]); i++) run.push(L[i]);
+          add('w', run.join('\n'));
+        } else if (CODE.test(line) && (i === 0 || !L[i - 1].trim())) {
+          // An indented block, blank lines inside it included, ends at the first line that is not indented.
+          for (run = []; i < L.length && (CODE.test(L[i]) || (!L[i].trim() && CODE.test(L[i + 1] || ''))); i++) run.push(L[i]);
+          add('w', run.join('\n'));
+        } else if (HEAD.test(line) || !line.trim()) {
+          add(line.trim() ? 'l h' : 'l', line); i++;
+        } else {
+          var m = ITEM.exec(line), hang = m ? m[0].length : line.length - line.trimStart().length;
+          for (i++; i < L.length && L[i].trim() && !HEAD.test(L[i]) && !ITEM.test(L[i]) && !TABLE.test(L[i])
+                 && !FENCE.test(L[i]); i++) line += ' ' + L[i].trim();
+          add('l', line, hang);
+        }
+      }
+    }
+    fetch('/spark/plan.md', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (t) { text = t; render(t); })
+      .catch(function () { pre.textContent = 'plan.md could not be loaded. It is in the repo at web/spark/plan.md.'; });
+    document.getElementById('copy').addEventListener('click', function () {
+      var b = this;
+      navigator.clipboard.writeText(text).then(function () { b.textContent = 'Copied'; },
+        function () { b.textContent = 'Copy failed'; });
+      setTimeout(function () { b.textContent = 'Copy'; }, 1600);
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruibin's Ideal Version</title>
+<script>
+  // Same theme cookie as the dashboard; it styles the page around the slide.
+  // The slide itself is always white, on screen and in print.
+  (function () {
+    var m = document.cookie.match(/(?:^|;\s*)nomad_theme=(dark|light|contrast)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+    // ?embed is the dashboard showing the slide in a frame: the slide alone, edge to edge
+    if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add('embed');
+  })();
+</script>
+<!-- Libre Franklin stands in for the template's Franklin Gothic where that font is not installed. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap">
+<style>
+:root {
+  --franklin: 'Franklin Gothic Book', 'Franklin Gothic Medium', 'Libre Franklin', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --page: #080909; --page-line: #20231f; --page-text: #f2f2ee; --page-btn: #131513; --page-btn-line: #333733;
+
+  /* Slide tokens: docs/SLIDE_SCHEMA.md, verbatim. */
+  --purple: #4f0f87; --teal: #35746e; --rust: #b34a22;
+  --purple-tint: #f4f0f9; --teal-tint: #e8f2f1; --rust-tint: #fbf1eb; --rust-line: #ebcab6;
+  --title: #3f3f3f; --ink: #262626; --sub: #5f5f5f; --wire: #8c8c8c; --rule: #7f7f7f;
+  --card-line: #d8d2e2; --white: #ffffff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="contrast"]) {
+    --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6;
+  }
+}
+[data-theme="light"] { --page: #f6f7f3; --page-line: #d5d9d3; --page-text: #121412; --page-btn: #eef0ec; --page-btn-line: #b7bdb6; }
+[data-theme="contrast"] { --page: #000; --page-line: #8a8a8a; --page-text: #fff; --page-btn: #0a0a0a; --page-btn-line: #c0c0c0; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--page-text);
+       font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+.bar { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--page-line); flex-wrap: wrap; }
+.bar .name { font-weight: 700; }
+.bar .sp { flex: 1; }
+.btn { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--page-btn-line);
+       border-radius: 8px; background: var(--page-btn); color: var(--page-text); text-decoration: none; font: inherit;
+       font-size: 13px; cursor: pointer; }
+.btn.primary { border-color: var(--teal); }
+/* The file type and its button wrap as one, so the choice never lands a line away from the action */
+.dlg { display: inline-flex; gap: 6px; }
+
+/* A document, not a dashboard: the slide is one vector drawing on a fixed 3180x1789 landscape
+   canvas, scaled whole to the width it is given. It stays sharp at any zoom. */
+.deck { max-width: 1800px; margin: 0 auto; padding: 24px 24px 64px; }
+.page { display: block; width: 100%; height: auto; background: var(--white); border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+
+.embed body { background: transparent; }
+.embed .bar { display: none; }
+.embed .deck { max-width: none; padding: 0; }
+.embed .page { border-radius: 0; box-shadow: none; }
+
+/* Drawing styles. Nothing is set below 24 units. */
+.page text { font-family: var(--franklin); font-size: 26px; fill: var(--ink); }
+.page .h1 { font-size: 52px; fill: var(--title); }
+.page .pill-t { fill: var(--white); font-weight: 700; font-size: 28px; text-anchor: middle; }
+.page .zh { font-size: 28px; font-weight: 700; }
+.page .zh tspan.it { font-weight: 400; font-style: italic; fill: var(--sub); }
+.page .lane-t { font-size: 24px; font-weight: 700; fill: var(--purple); letter-spacing: .04em; }
+.page .c { text-anchor: middle; }
+.page .b { font-weight: 700; }
+.page .s { fill: var(--sub); font-size: 24px; }
+.page .hw { fill: var(--purple); font-size: 24px; }
+.page .sock { fill: var(--sub); font-size: 24px; font-weight: 700; }
+.page .code { font-family: var(--mono); font-size: 24px; fill: var(--teal); }
+.page .yn { fill: var(--sub); font-size: 24px; font-style: italic; }
+.page .lg { fill: var(--sub); font-size: 24px; }
+
+.page .zone-ctx { fill: var(--purple-tint); }
+.page .zone-focus { fill: var(--teal-tint); }
+.page .spark { fill: var(--white); stroke: var(--purple); stroke-width: 2; }
+.page .ueside { fill: var(--white); stroke: var(--card-line); stroke-width: 2; }
+.page .lane-cpu { fill: var(--purple-tint); }
+.page .lane-gpu { fill: var(--purple-tint); }
+.page .card { fill: var(--white); stroke: var(--card-line); stroke-width: 1.8; }
+.page .focal { fill: var(--white); stroke: var(--teal); stroke-width: 2.8; }
+.page .mem, .page .port { fill: var(--white); stroke: var(--purple); stroke-width: 1.8; }
+.page .strip { fill: var(--wire); }
+.page .dec { fill: var(--white); stroke: var(--teal); stroke-width: 2.2; }
+.page .num { fill: var(--teal); }
+.page .num-t { fill: var(--white); font-weight: 700; font-size: 24px; text-anchor: middle; }
+.page .disc { fill: var(--teal); }
+.page .ico-w { fill: none; stroke: var(--white); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+.page .data { stroke: var(--wire); stroke-width: 3; fill: none; }
+.page .bi { marker-start: url(#ah); marker-end: url(#ah); }
+.page .one { marker-end: url(#ah); }
+.page .ctl { stroke: var(--wire); stroke-width: 2.4; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
+.page .flow { stroke: var(--teal); stroke-width: 3; fill: none; marker-end: url(#at); }
+.page .bits { font-family: var(--mono); font-size: 28px; fill: var(--ink); }
+.page .gl text { font-family: var(--mono); font-size: 24px; fill: var(--ink); text-anchor: middle; }
+/* The detailed view opens out of the Channel emulator block: a teal wash between two faint edges. */
+.page .pv { fill: var(--teal); fill-opacity: .12; stroke: none; }
+.page .pv-edge { stroke: var(--teal); stroke-opacity: .55; stroke-width: 2.4; fill: none; }
+.page .grp { fill: none; stroke: var(--teal); stroke-width: 2; stroke-dasharray: 4 6; }
+.page #ah path { fill: var(--wire); } .page #at path { fill: var(--teal); }
+
+@page { size: 3180px 1789px; margin: 0; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { background: var(--white); }
+  .bar { display: none; }
+  .deck { max-width: none; padding: 0; }
+  .page { width: 3180px; height: 1789px; border-radius: 0; box-shadow: none; }
+}
+@media screen and (max-width: 860px) {
+  .bar { padding: 10px 16px; }
+  .deck { padding: 16px 16px 48px; }
+}
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="name">Channel Emulator Brief · Ruibin's ideal version</span>
+  <span class="sp"></span>
+  <a class="btn" href="/spark/brief">Original layout</a>
+  <a class="btn" href="/spark/">Dashboard</a>
+  <span class="dlg"><select class="btn" id="fmt" aria-label="File type"><option value="pdf">.pdf</option><option value="pptx">.pptx</option></select>
+  <button class="btn primary" id="dl" type="button">Download</button></span>
+</div>
+
+<main class="deck">
+<svg class="page" viewBox="0 0 3180 1789" role="img" aria-label="Sionna RT channel emulator on NVIDIA DGX Spark, Ruibin's layout. Top, across the page: the system. On the GB10's Arm CPU, two OCUDU DUs connect through ZMQ sockets to the IQ broker. Each IQ block passes through 128 GB of unified memory over NVLink-C2C to the channel emulator on the GPU, which also takes live taps from a publisher on port 5566. A 10 GbE port carries the core. Outside the Spark, the IQ broker connects through ZMQ sockets to two OAI UEs in namespaces ue1 and ue2, which feed the UE broker for multipath TCP. The GPU's channel emulator opens out into a shaded detailed view: the emulator loop below. Lower left: the emulator loop as a flowchart, every 0.5 ms slot: pull 30,720 IQ samples with REQ; if new live taps arrived from SUB 5566, swap them in; otherwise build taps with tr38901.TDL, the 3GPP tapped-delay-line model, which gives path gains a and delays tau, and sample them with cir_to_time_channel; the tap building and swapping form the channel generation and update stage; filter with ApplyTimeChannel; add AWGN, additive white Gaussian noise, and bias; return the same 30,720 samples with REP; repeat for the next slot. Lower right: Sionna RT. A scene loaded with load_scene and the path solver PathSolver()(scene) run outside the slot loop; the channel parameters from Paths.cir, path gains a and delays tau, replace step 2, the TDL taps, and feed the emulator's channel generation and update stage.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect width="3180" height="1789" fill="#ffffff"/>
+
+  <!-- title band -->
+  <text class="h1" x="50" y="100">Sionna RT Channel Emulator on NVIDIA DGX Spark</text>
+  <line x1="50" y1="134" x2="3130" y2="134" stroke="#7f7f7f" stroke-width="1.8"/>
+
+  <!-- ===== system, across the top ===== -->
+  <rect class="zone-ctx" x="50" y="156" width="3080" height="590" rx="18"/>
+  <text class="zh" x="76" y="198"><tspan fill="#4f0f87">System</tspan></text>
+
+  <rect class="spark" x="76" y="222" width="2504" height="500" rx="14"/>
+  <text class="lane-t" x="100" y="260">DGX SPARK · GB10 SoC</text>
+
+  <rect class="lane-cpu" x="100" y="280" width="2140" height="170" rx="12"/>
+  <text class="lane-t" x="122" y="316">ARM CPU · 20 CORES</text>
+  <rect class="card" x="470" y="315" width="300" height="120" rx="12"/>
+  <text class="c b" x="620" y="367">DU 1, 2</text><text class="c s" x="620" y="403">OCUDU</text>
+  <rect class="strip" x="770" y="315" width="14" height="120" rx="3"/>
+  <text class="c sock" x="777" y="301">ZMQ</text>
+  <line class="data bi" x1="790" y1="375" x2="990" y2="375"/>
+  <rect class="strip" x="996" y="315" width="14" height="120" rx="3"/>
+  <text class="c sock" x="1003" y="301">ZMQ</text>
+  <rect class="card" x="1010" y="315" width="300" height="120" rx="12"/>
+  <text class="c b" x="1160" y="367">IQ broker</text><text class="c s" x="1160" y="403">ZMQ</text>
+  <rect class="strip" x="1310" y="315" width="14" height="120" rx="3"/>
+  <text class="c sock" x="1317" y="301">ZMQ</text>
+
+  <!-- label kept left of x 1160, where the broker-to-emulator line crosses the bar -->
+  <rect class="mem" x="100" y="466" width="2140" height="46" rx="10"/>
+  <text class="c hw" x="700" y="498">NVLink-C2C · 128 GB unified</text>
+  <rect class="port" x="2290" y="465" width="250" height="48" rx="24"/><text class="c hw" x="2415" y="497">10 GbE: core</text>
+
+  <rect class="lane-gpu" x="100" y="528" width="2140" height="170" rx="12"/>
+  <text class="lane-t" x="122" y="564">GPU</text>
+  <rect class="card" x="560" y="563" width="260" height="120" rx="12"/>
+  <text class="c b" x="690" y="615">Live taps</text><text class="c s" x="690" y="651">PUB :5566</text>
+  <line class="ctl" x1="820" y1="623" x2="954" y2="623"/>
+  <rect class="focal" x="960" y="563" width="400" height="120" rx="12"/>
+  <circle class="disc" cx="1008" cy="623" r="28"/>
+  <path class="ico-w" d="M992 623 h6 l5 -12 l10 24 l5 -12 h6"/>
+  <text class="c b" x="1180" y="615">Channel emulator</text><text class="c s" x="1180" y="651">Sionna PHY on Blackwell</text>
+  <line class="data bi" x1="1160" y1="441" x2="1160" y2="557"/>
+
+  <!-- the UEs, outside the Spark -->
+  <rect class="ueside" x="2610" y="222" width="494" height="500" rx="14"/>
+  <text class="lane-t" x="2634" y="260">UE SIDE</text>
+  <line class="data bi" x1="1330" y1="375" x2="2630" y2="375"/>
+  <rect class="strip" x="2636" y="315" width="14" height="120" rx="3"/>
+  <text class="c sock" x="2643" y="301">ZMQ</text>
+  <rect class="card" x="2650" y="315" width="420" height="120" rx="12"/>
+  <text class="c b" x="2860" y="367">OAI UE 1, 2</text><text class="c s" x="2860" y="403">ns ue1, ue2</text>
+  <line class="data bi" x1="2860" y1="441" x2="2860" y2="557"/>
+  <rect class="card" x="2650" y="563" width="420" height="120" rx="12"/>
+  <text class="c b" x="2860" y="615">UE broker</text><text class="c s" x="2860" y="651">MPTCP</text>
+
+  <!-- detailed view: the Channel emulator block opens out into the loop below -->
+  <polygon class="pv" points="960,683 1360,683 1990,776 330,776"/>
+  <line class="pv-edge" x1="960" y1="683" x2="330" y2="776"/>
+  <line class="pv-edge" x1="1360" y1="683" x2="1990" y2="776"/>
+  <text class="c s" x="1160" y="769">Detailed view</text>
+
+  <!-- ===== emulator loop, lower left (~70 %) ===== -->
+  <rect class="zone-focus" x="50" y="776" width="2156" height="780" rx="18"/>
+  <text class="zh" x="76" y="818"><tspan fill="#35746e">Emulator loop</tspan><tspan class="it" dx="14">Every 0.5 ms slot</tspan></text>
+
+  <!-- 1 pull -->
+  <rect class="card" x="440" y="848" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="880" r="22"/><text class="num-t" x="482" y="888">1</text>
+  <text x="518" y="889"><tspan class="b">Pull</tspan><tspan class="code" dx="12">REQ</tspan><tspan class="s" dx="12">30,720 IQ samples</tspan></text>
+  <line class="flow" x1="900" y1="912" x2="900" y2="938"/>
+
+  <!-- decision: has the live-taps subscriber received a new tap set -->
+  <polygon class="dec" points="690,994 900,942 1110,994 900,1046"/>
+  <text class="c" x="900" y="986">New live taps</text>
+  <text class="c" x="900" y="1018">from <tspan class="code">SUB :5566</tspan></text>
+
+  <!-- channel generation / update stage: where new taps come from -->
+  <rect class="grp" x="416" y="1074" width="1574" height="190" rx="16"/>
+  <text class="s" x="1390" y="1222">Channel generation / update</text>
+
+  <!-- yes: swap -->
+  <path class="flow" d="M1110 994 H1810 V1086"/>
+  <text class="yn" x="1120" y="980">yes</text>
+  <rect class="card" x="1660" y="1090" width="300" height="64" rx="12"/>
+  <text class="c b" x="1810" y="1131">Swap taps</text>
+  <path class="flow" d="M1940 1154 V1310 H1366"/>
+
+  <!-- no: build taps -->
+  <line class="flow" x1="900" y1="1046" x2="900" y2="1086"/>
+  <text class="yn" x="914" y="1066">no</text>
+  <rect class="card" x="440" y="1090" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="1122" r="22"/><text class="num-t" x="482" y="1130">2</text>
+  <text x="518" y="1131"><tspan class="b">Taps</tspan><tspan class="code" dx="12">tr38901.TDL</tspan><tspan class="s" dx="12">3GPP tapped-delay-line model → gains a, delays τ</tspan></text>
+  <line class="flow" x1="900" y1="1154" x2="900" y2="1180"/>
+  <rect class="card" x="440" y="1184" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="1216" r="22"/><text class="num-t" x="482" y="1224">3</text>
+  <text x="518" y="1225"><tspan class="b">Sample</tspan><tspan class="code" dx="12">cir_to_time_channel</tspan></text>
+  <line class="flow" x1="900" y1="1248" x2="900" y2="1274"/>
+
+  <!-- filter, noise, return -->
+  <rect class="focal" x="440" y="1278" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="1310" r="22"/><text class="num-t" x="482" y="1318">4</text>
+  <text x="518" y="1319"><tspan class="b">Filter</tspan><tspan class="code" dx="12">ApplyTimeChannel</tspan></text>
+  <line class="flow" x1="900" y1="1342" x2="900" y2="1368"/>
+  <rect class="card" x="440" y="1372" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="1404" r="22"/><text class="num-t" x="482" y="1412">5</text>
+  <text x="518" y="1413"><tspan class="b">Noise</tspan><tspan class="code" dx="12">AWGN</tspan><tspan class="s" dx="12">additive white Gaussian noise + bias</tspan></text>
+  <line class="flow" x1="900" y1="1436" x2="900" y2="1462"/>
+  <rect class="card" x="440" y="1466" width="920" height="64" rx="12"/>
+  <circle class="num" cx="482" cy="1498" r="22"/><text class="num-t" x="482" y="1506">6</text>
+  <text x="518" y="1507"><tspan class="b">Return</tspan><tspan class="code" dx="12">REP</tspan><tspan class="s" dx="12">same 30,720</tspan></text>
+
+  <!-- next slot -->
+  <path class="flow" d="M440 1498 H400 V880 H434"/>
+  <text class="yn" x="386" y="1181" text-anchor="end">next</text>
+  <text class="yn" x="386" y="1211" text-anchor="end">slot</text>
+
+  <!-- what it runs on -->
+  <text class="s" x="1400" y="1413">2 cells × DL, UL</text>
+  <text class="s" x="1400" y="1447">40 MHz · 61.44 Msps</text>
+
+  <!-- ===== Sionna RT, lower right (~30 %): each call tagged with the loop step it covers ===== -->
+  <rect class="zone-ctx" x="2236" y="776" width="894" height="780" rx="18"/>
+  <text class="zh" x="2262" y="818"><tspan fill="#4f0f87">Sionna RT</tspan></text>
+
+  <rect class="card" x="2383" y="858" width="600" height="116" rx="12"/>
+  <text class="c b" x="2683" y="896">Scene</text><text class="c code" x="2683" y="930">load_scene(…)</text><text class="c yn" x="2683" y="960">outside the slot loop</text>
+  <line class="flow" x1="2683" y1="974" x2="2683" y2="1004"/>
+  <rect class="card" x="2383" y="1008" width="600" height="116" rx="12"/>
+  <text class="c b" x="2683" y="1046">Path solver</text><text class="c code" x="2683" y="1080">PathSolver()(scene)</text><text class="c yn" x="2683" y="1110">outside the slot loop</text>
+  <line class="flow" x1="2683" y1="1124" x2="2683" y2="1154"/>
+  <rect class="card" x="2383" y="1158" width="600" height="116" rx="12"/>
+  <circle class="num" cx="2425" cy="1188" r="22"/><text class="num-t" x="2425" y="1196">2</text>
+  <text class="c b" x="2683" y="1196">Channel parameters</text><text class="c code" x="2683" y="1230">Paths.cir(): a, τ</text><text class="c yn" x="2683" y="1260">replaces step 2, the TDL taps</text>
+
+  <!-- RT output into the loop's channel generation / update stage, level with Sample, which takes a and τ -->
+  <path class="ctl" d="M2383 1216 H1996"/>
+
+  <!-- ===== legend: only the three line kinds; every shape is named where it is drawn ===== -->
+  <g transform="translate(50 1590)">
+    <text class="lg b" x="0" y="8" fill="#262626">Legend</text>
+    <line class="data one" x1="130" y1="0" x2="174" y2="0"/><text class="lg" x="186" y="8">Data</text>
+    <line class="ctl" x1="330" y1="0" x2="374" y2="0"/><text class="lg" x="386" y="8">Taps</text>
+    <line class="flow" x1="530" y1="0" x2="574" y2="0"/><text class="lg" x="586" y="8">Step</text>
+  </g>
+  <!-- y 1650 to 1789 stays empty: the banner goes here -->
+</svg>
+</main>
+
+<script src="/spark/slide-pptx.js"></script>
+<script>
+  // .pdf prints the page, which the print stylesheet sizes to the slide; .pptx rebuilds it as editable shapes.
+  document.getElementById('dl').addEventListener('click', function () {
+    var btn = this;
+    if (document.getElementById('fmt').value !== 'pptx') return window.print();
+    var name = location.pathname.split('/').pop() || 'brief';
+    btn.disabled = true; btn.textContent = 'Building…';
+    slidePptx.download(document.querySelector('svg.page'), name + '.pptx')
+      .catch(function (e) { alert('The .pptx could not be built: ' + e.message); })
+      .then(function () { btn.disabled = false; btn.textContent = 'Download'; });
+  });
+</script>
+</body>
+</html>
