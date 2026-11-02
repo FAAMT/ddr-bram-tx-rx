@@ -1,4 +1,4 @@
-# What the Makefile generates. The README says these are ignored; the source repo had no .gitignore to do it.
+# What the Makefile generates. docs/RFSOC_BUILD.md says these are ignored; the source repo had no .gitignore to do it.
 build/
 output/
 dist/

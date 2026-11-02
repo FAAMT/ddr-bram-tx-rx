@@ -40,4 +40,4 @@ The template contains the bit/HWH from the original final implementation, a matc
 vivado -mode batch -source vivado/build_bitstream.tcl
 ```
 
-Compare the new outputs with the golden artifacts, then complete the README's board-level checks using RFDC digital test mode, a known tone, and a safe-power loopback. Static configuration reproducibility does not replace measurement of the analog front end and on-board clocks.
+Compare the new outputs with the golden artifacts, then complete the board-level checks in `RFSOC_BUILD.md` using RFDC digital test mode, a known tone, and a safe-power loopback. Static configuration reproducibility does not replace measurement of the analog front end and on-board clocks.

@@ -1,107 +1,77 @@
-# RFSoC Waveform TX/RX Rebuildable Project
+# Sionna RT channel emulator on NVIDIA DGX Spark
 
-> Original author: Ruibin Chen ([Ruibin2000/DDR_BRAM_tx_rx_v1](https://github.com/Ruibin2000/DDR_BRAM_tx_rx_v1)). This repository is a copy of his design; the untouched import is on the `ruibin-source` branch.
+One DGX Spark stands in for the radio channel between two 5G cells and two UEs. The cells and UEs swap IQ samples over
+ZMQ instead of over the air, and for every 0.5 ms slot a GPU emulator filters the samples with the current channel taps
+and adds noise. Sionna RT supplies the taps: it ray-traces a UAV flying through a city street between the two cells and
+sends the path gains and delays as *live taps*, so the channel follows the UAV.
 
-This is a relocatable and version-control-friendly RFSoC4x2 project intended for continued development. Source files and generated artifacts are kept separate; do not commit Vivado or Vitis working directories.
+![The channel emulator and the UAV scenario](docs/img/slide.png)
 
-## Project scope
+This repository holds the Sionna RT side, built and checked, and [`web/spark/plan.md`](web/spark/plan.md), the
+step-by-step plan for the rest. The slide's source is [`web/spark/brief-uav.html`](web/spark/brief-uav.html).
 
-- Tool version: Vivado/Vitis 2025.1
-- FPGA: `xczu48dr-ffvg1517-2-e`
-- Board: `realdigital.org:rfsoc4x2:part0:1.0`
-- Base data path: PS AXI-Lite → TX BRAM → DAC, and ADC → RX BRAM → PS
-- Optional extension: PS DDR → `S_AXI_HP0_FPD` → TX BRAM
+## The notebook
 
-The BD, BDA, and 12 cell XCI files in `vivado/source_bd/` are the authoritative rebuild source for the base design. `vivado/block_design.tcl` is provided only as an inspection and editing reference; it cannot replace the complete BD bundle. The BD Tcl exported by Vivado 2025.1 does not preserve the propagated BRAM `READ_LATENCY` metadata required by this design.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FAAMT/ddr-bram-tx-rx/blob/main/spark/rt/verify_uav_rt.ipynb)
 
-## Directory layout
+[`verify_uav_rt.ipynb`](spark/rt/verify_uav_rt.ipynb) answers one question before anything goes to the Spark: are the
+taps Sionna RT produces right, and do they reach the emulator intact? It traces the whole flight with
+[`uav_rt.py`](spark/rt/uav_rt.py), the same module the Spark will import, and runs 21 checks, each printing PASS or FAIL
+with its numbers.
 
-```text
-board_files/       Bundled RFSoC4x2 board part
-hls/               Four Vitis HLS IPs, each with src/, tb/, and hls_config.cfg
-ip_packages/       Packaged IP ZIP files
-ip_repo/           IP repositories ready for registration in Vivado
-vivado/            Project, BD, constraints, verification, and bitstream Tcl
-pynq/              PYNQ controllers, notebooks, and optional DDR extension
-scripts/           HLS, structural validation, IP staging, and PYNQ packaging
-docs/              Parameters, addresses, RFDC, validation, and extension notes
-reference/         Known-good base BIT/HWH/XSA files and implementation reports
-build/             Generated Vivado/Vitis work directories (ignored)
-output/            Newly generated BIT/HWH/XSA files (ignored)
-dist/              Bundles ready to copy to a PYNQ board (ignored)
-```
+In Colab, pick a GPU runtime (*Runtime → Change runtime type → GPU*) and *Run all*. It also runs on a CPU, more slowly.
 
-## Quick start
+## Results on Colab (Tesla T4)
 
-Load the 2025.1 tool environment first:
+19 of 21 checks pass. The 327 traces, one every 50 ms of a 16.3 s flight, took 31 s.
 
-```bash
-source ~/Xilinx/2025.1/Vivado/settings64.sh
-source ~/Xilinx/2025.1/Vitis/settings64.sh
-cd rfsoc_waveform_tx_rx_rebuildable
-make check
-```
+### The route
 
-Recreate and open the base Vivado project:
+<img src="docs/img/route-top.png" width="38%"> <img src="docs/img/route-3d.jpg" width="58%">
 
-```bash
-make vivado-project
-vivado build/vivado/rfsoc_waveform_tx_rx.xpr
-```
+The UAV starts in a square, turns into a 16 m wide street and flies up it at 8 to 10 m, below the roofs, towards two
+gNBs on the rooftops at the far end. The 3D view is the slide's picture redrawn by Sionna: red gNBs, green UAV, orange
+route, and the radio paths bouncing between the walls.
 
-Generate the bitstream, HWH, and XSA, then package the PYNQ overlay:
+### What the emulator will see
 
-```bash
-make bitstream JOBS=8
-make pynq
-```
+![Path gain, paths per trace and taps along the route](docs/img/verify-plots.png)
 
-Generated artifacts:
+- **Path gain** (top left) climbs about 15 dB on link 1 and 11 dB on link 2 as the UAV closes in: less distance, less
+  loss. The small steps are reflections coming and going as the UAV passes the end of a wall.
+- **Paths per trace** (top right): 4 to 31. Near the end, link 1 picks up many more wall reflections.
+- **Taps** (bottom): the 16 numbers the emulator filters with. The bright row at lag 0 is the direct path; the fainter
+  rows are echoes arriving a few samples later.
 
-- `output/rfsoc_waveform_tx_rx.bit`
-- `output/rfsoc_waveform_tx_rx.hwh`
-- `output/rfsoc_waveform_tx_rx.xsa`
-- `dist/pynq/`
+### The checks
 
-If the current machine does not have an implementation license for `xczu48dr`, package the known-good PYNQ overlay instead:
+| group | passed | what it shows |
+|---|---|---|
+| scene | 3 of 3 | the gNBs sit on roofs; the route stays 1.5 m clear of buildings; 95% of it runs between walls taller than the UAV (the rest is the square) |
+| trace | 2 of 2 | every position traced; both links always have paths |
+| physics | 4 of 4 | direct paths match free-space loss to 0.00002 dB and the speed of light to 0.0001 ns; no path beats free space over its own length; gain rises towards the gNBs |
+| repeatability | 1 of 3 | see below |
+| message | 3 of 3 | 327 messages survive encoding bit for bit; all 9 kinds of broken message are refused |
+| taps | 2 of 2 | our tap code matches Sionna's own to one part in a million; 16 taps keep at least 95% of each link's energy |
+| live taps over ZMQ | 4 of 4 | each of the 327 updates lands on exactly the right slot; broken or repeated messages change nothing |
 
-```bash
-make pynq-golden
-```
+**The two FAILs.** Re-tracing on the T4 found the same paths, but their gains moved by up to 0.16 dB, against a
+0.01 dB limit set on a CPU, where traces repeat to 0.0001 dB. Why the GPU differs is not known yet. It does not reach
+the emulator: the route is traced once and replayed from a file, and the replay check passed byte for byte. And 0.16 dB
+is small next to the 15 to 25 dB the route itself moves.
 
-## Rebuild the HLS IP
+**A finding for later.** 16 taps hold 99% of the energy at most points, but at a few, link 1 needs up to 129 taps:
+some echoes arrive about 2 µs after the direct path.
 
-```bash
-make hls
-make stage-ip
-```
+## Next
 
-The HLS flow runs C simulation, C synthesis, and IP packaging in sequence. New IP is first expanded into `generated_ip_repo/`; it does not automatically overwrite the validated `ip_repo/`. Compare the interfaces, VLNVs, and RTL before deliberately switching the BD to a regenerated IP repository.
+- Settle the two FAILs: find what makes GPU traces differ, or set the limit from repeated T4 runs.
+- Run the notebook on the DGX Spark, then connect `publish()` and `TapSwitch` to the emulator loop (plan.md steps 3, 10
+  and 11), choosing the tap count with the 129-tap finding in mind.
 
-## Apply the DDR-to-BRAM extension
+## Where this started
 
-```bash
-make vivado-project
-make ddr-project
-make bitstream
-make pynq
-```
-
-By default, `make ddr-project` uses the bundled `ip_repo/ddr_bram_bridge_1_0`, replaces the TX bridge in the generated Vivado project, and connects PS HP0. After modifying the HLS source, run `make hls && make stage-ip`, then select the regenerated repository explicitly:
-
-```bash
-make ddr-project DDR_IP_REPO=generated_ip_repo/ddr_bram_bridge_1_0
-```
-
-See [docs/DDR_TO_BRAM_EXTENSION.md](docs/DDR_TO_BRAM_EXTENSION.md) for register definitions, cache-flush requirements, and address rules.
-
-## Extension guidelines
-
-1. Modify HLS code only under `hls/<ip>/src`, `tb`, and the corresponding configuration. Run C simulation before updating an IP package.
-2. Modify the BD in a recreated Vivado project. After validation, use `vivado/stage_source_bd.tcl` to export the complete BD and XCI bundle.
-3. Keep constraints in `vivado/constraints.xdc`; add any new constraints explicitly in `create_project.tcl`.
-4. Do not hard-code development-machine paths in PYNQ code. BIT and HWH files must share a base name and come from the same implementation.
-5. When extending addresses, BRAM depth, clocks, or RFDC settings, update both `vivado/verify_design.tcl` and the relevant documentation.
-
-Before running a hardware loopback, confirm that the DAC-to-ADC path has suitable attenuation. Static BD validation does not replace on-board validation of clocks, RFDC behavior, and the analog signal chain.
-
+This repository began as a copy of Ruibin Chen's RFSoC 4x2 waveform TX/RX design
+([Ruibin2000/DDR_BRAM_tx_rx_v1](https://github.com/Ruibin2000/DDR_BRAM_tx_rx_v1)); the untouched import is on the
+`ruibin-source` branch. His code (`hls/`, `vivado/`, `pynq/` and the rest) is unchanged, and his build guide is now
+[`docs/RFSOC_BUILD.md`](docs/RFSOC_BUILD.md).

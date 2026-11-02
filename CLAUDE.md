@@ -6,7 +6,8 @@ Inherits `~/.claude/CLAUDE.md` (NOMADIC OS) and `~/CLAUDE/projects/CLAUDE.md`.
 
 Fahad's own copy of Ruibin Chen's RFSoC 4x2 waveform TX/RX design: PS → TX BRAM → DAC and ADC → RX BRAM → PS, plus
 an optional PS DDR → TX BRAM extension. Four Vitis HLS IPs, a Vivado 2025.1 block design, and PYNQ drivers and
-notebooks for a Zadoff-Chu channel sounder. `README.md` is Ruibin's and covers the build.
+notebooks for a Zadoff-Chu channel sounder. `docs/RFSOC_BUILD.md` is Ruibin's README and covers that build;
+`README.md` now leads with the Sionna RT side (`spark/rt/`).
 
 | | |
 |---|---|
@@ -36,8 +37,8 @@ only this directory.
   identity Fahad's other public repos use. Never the gmail address.
 - **Ruibin's code has no licence.** Keep his name on it: don't drop the source line above, and don't add a licence
   of our own without Fahad's word.
-- **No build products in git.** `.gitignore` covers what the Makefile and Vivado generate. The README calls those
-  ignored, but Ruibin's repo had no `.gitignore`. `reference/known_good/` is the one deliberate binary (a 34 MB
-  `.bit`); GitHub refuses any file over 100 MB.
+- **No build products in git.** `.gitignore` covers what the Makefile and Vivado generate. `docs/RFSOC_BUILD.md`
+  calls those ignored, but Ruibin's repo had no `.gitignore`. `reference/known_good/` is the one deliberate binary
+  (a 34 MB `.bit`); GitHub refuses any file over 100 MB.
 - **Nothing here builds on this machine.** Vivado/Vitis 2025.1 are not on PATH and `~/Xilinx` has no 2025.1
   install. Say so rather than claim a build passed.
